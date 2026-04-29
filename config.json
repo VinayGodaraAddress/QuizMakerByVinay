@@ -6,7 +6,7 @@
   "Physics": {
     "Kinematics": "physics/kinematics.json"
   },
-  "English": {
-    "Grammar": "english/grammar.json"
+  "haryana_gk": {
+    "1 Ambala": "haryana_gk/Ambala.json"
   }
 }
