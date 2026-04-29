@@ -1,0 +1,24 @@
+[
+  {
+    "question": "Evaluate the integral: $\\int_0^{\\pi/2} \\sin(x) \\, dx$",
+    "options": [
+      "0",
+      "1",
+      "$-1$",
+      "$\\pi/2$"
+    ],
+    "answer": 1,
+    "explanation": "**Full Solution:** The anti-derivative of $\\sin(x)$ is $-\\cos(x)$. Evaluating this from $0$ to $\\pi/2$ gives:\n$$(-\\cos(\\pi/2)) - (-\\cos(0)) = (-0) - (-1) = 1$$"
+  },
+  {
+    "question": "What is the derivative of $x^3$?",
+    "options": [
+      "$3x^2$",
+      "$x^2$",
+      "$3x$",
+      "$\\frac{x^4}{4}$"
+    ],
+    "answer": 0,
+    "explanation": "**Full Solution:** Using the power rule, $\\frac{d}{dx} x^n = n x^{n-1}$. Therefore, $\\frac{d}{dx} x^3 = 3x^2$."
+  }
+]
