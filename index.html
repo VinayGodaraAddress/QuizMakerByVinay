@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced MCQ Quiz App</title>
     
-    <script src="[https://cdn.jsdelivr.net/npm/marked/marked.min.js](https://cdn.jsdelivr.net/npm/marked/marked.min.js)"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
 
     <script>
         MathJax = {
@@ -16,7 +16,7 @@
             startup: { typeset: false }
         };
     </script>
-    <script id="MathJax-script" async src="[https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js](https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js)"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <style>
         :root {
@@ -140,6 +140,7 @@
         input[type="radio"] { margin-right: 12px; transform: scale(1.3); }
         
         .markdown-inline-wrapper { display: inline-block; vertical-align: middle; }
+        .markdown-inline-wrapper p { margin: 0; }
         
         /* Fixed Navigation Buttons */
         .nav-buttons { display: flex; gap: 10px; margin-top: 30px; width: 100%; justify-content: space-between;}
@@ -310,8 +311,18 @@
     const startBtn = document.getElementById('start-btn');
     const mainNavbar = document.getElementById('main-navbar');
 
-    // Configure Marked.js slightly so it doesn't break MathJax if not necessary
-    marked.use({ breaks: true });
+    // Bulletproof Markdown Renderer
+    function renderMarkdown(text, inline = false) {
+        if (!text || typeof text !== 'string') return "";
+        try {
+            if (typeof marked !== 'undefined') {
+                return inline ? marked.parseInline(text) : marked.parse(text);
+            }
+        } catch (e) {
+            console.error("Markdown parsing failed, falling back to raw text.", e);
+        }
+        return text; // Fallback to raw text if marked fails to load or crashes
+    }
 
     // 1. Initialization
     window.onload = async () => {
@@ -326,7 +337,8 @@
             document.getElementById('setup-form').style.display = 'block';
             populateSubjects();
         } catch (error) {
-            statusMsg.innerHTML = `<span style="color:red">Error: ${error.message}. Make sure config.json exists.</span>`;
+            statusMsg.innerHTML = `<span style="color:red; font-weight:bold;">Error: ${error.message}. Make sure config.json exists.</span>`;
+            statusMsg.style.display = 'block';
         }
     };
 
@@ -585,8 +597,9 @@
         document.getElementById('current-q-num').innerText = currentQIndex + 1;
         
         const qBox = document.getElementById('question-text');
-        // Render markdown for question
-        qBox.innerHTML = `<span style="color:#7f8c8d; font-size:0.85em; font-weight:bold; display:block; margin-bottom:10px;">[${q.subject} > ${q.chapter}]</span>${marked.parse(q.question)}`;
+        
+        // Render markdown safely
+        qBox.innerHTML = `<span style="color:#7f8c8d; font-size:0.85em; font-weight:bold; display:block; margin-bottom:10px;">[${q.subject} > ${q.chapter}]</span>${renderMarkdown(q.question)}`;
         
         const optContainer = document.getElementById('options-container');
         optContainer.innerHTML = '';
@@ -594,11 +607,10 @@
         
         q.options.forEach((optText, index) => {
             const isChecked = userAnswers[currentQIndex] === index ? 'checked' : '';
-            // Render markdown inline for options
             optContainer.innerHTML += `
                 <label class="option-label" id="label-opt-${index}">
                     <input type="radio" name="option" value="${index}" ${isChecked} onchange="handleSelection(${index})">
-                    <div class="markdown-inline-wrapper">${marked.parseInline(optText)}</div>
+                    <div class="markdown-inline-wrapper">${renderMarkdown(optText, true)}</div>
                 </label>
             `;
         });
@@ -647,8 +659,7 @@
         const feedbackContainer = document.getElementById('instant-feedback-container');
         feedbackContainer.style.display = 'block';
         
-        // Render markdown for explanation
-        let expHtml = q.explanation ? `<div class="explanation-box">${marked.parse(q.explanation)}</div>` : `<div class="explanation-box">No explanation provided.</div>`;
+        let expHtml = q.explanation ? `<div class="explanation-box">${renderMarkdown(q.explanation)}</div>` : `<div class="explanation-box">No explanation provided.</div>`;
         
         feedbackContainer.innerHTML = `
             <div style="margin-top:15px;">
@@ -684,18 +695,16 @@
             else wrongCount++;
 
             let statusClass = isCorrect ? 'correct' : (isUnanswered ? 'unanswered' : 'incorrect');
-            
-            // Render markdown for explanation in results
-            let expHtml = q.explanation ? `<div class="explanation-box">${marked.parse(q.explanation)}</div>` : '';
+            let expHtml = q.explanation ? `<div class="explanation-box">${renderMarkdown(q.explanation)}</div>` : '';
 
             reviewHTML += `
                 <div class="result-item ${statusClass}">
                     <p style="color:#7f8c8d; font-size:0.85em; margin-bottom:5px; font-weight:bold;">[${q.subject} > ${q.chapter}]</p>
-                    <div style="margin-bottom: 10px;"><strong>Q${i+1}:</strong> ${marked.parseInline(q.question)}</div>
+                    <div style="margin-bottom: 10px;"><strong>Q${i+1}:</strong> ${renderMarkdown(q.question, true)}</div>
                     <p>Your Answer: <span class="${isCorrect ? 'answer-correct' : 'answer-incorrect'}">
-                            ${isUnanswered ? 'None' : marked.parseInline(q.options[userAnswer])}
+                            ${isUnanswered ? 'None' : renderMarkdown(q.options[userAnswer], true)}
                         </span></p>
-                    ${!isCorrect ? `<p>Correct Answer: <span class="answer-correct">${marked.parseInline(q.options[q.answer])}</span></p>` : ''}
+                    ${!isCorrect ? `<p>Correct Answer: <span class="answer-correct">${renderMarkdown(q.options[q.answer], true)}</span></p>` : ''}
                     ${expHtml}
                 </div>`;
         });
