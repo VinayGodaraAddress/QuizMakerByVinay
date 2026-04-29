@@ -311,7 +311,7 @@
     const mainNavbar = document.getElementById('main-navbar');
 
     // Configure Marked.js slightly so it doesn't break MathJax if not necessary
-    marked.setOptions({ breaks: true });
+    marked.use({ breaks: true });
 
     // 1. Initialization
     window.onload = async () => {
