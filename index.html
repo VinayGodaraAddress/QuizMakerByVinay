@@ -28,31 +28,46 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color); color: var(--text-color);
-            line-height: 1.6; padding: 20px; margin: 0;
+            line-height: 1.6; padding: 15px; margin: 0;
         }
         .container {
             max-width: 850px; margin: 0 auto; background: var(--container-bg);
-            padding: 30px; border-radius: var(--border-radius);
+            padding: 20px; border-radius: var(--border-radius);
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        h1, h2, h3 { color: var(--primary); }
+        h1, h2, h3 { color: var(--primary); margin-top: 0; }
         .section { display: none; }
         .section.active { display: block; }
         
-        /* Setup Form */
+        /* Setup Form & Checkboxes */
         .form-group { margin-bottom: 20px; }
         label { display: block; font-weight: bold; margin-bottom: 8px; }
-        select, input[type="number"] {
-            width: 100%; padding: 10px; border: 1px solid #bdc3c7;
-            border-radius: 4px; font-size: 16px;
+        
+        input[type="number"], select {
+            width: 100%; padding: 12px; border: 1px solid #bdc3c7;
+            border-radius: 4px; font-size: 16px; box-sizing: border-box;
         }
-        select[multiple] { height: 140px; }
-        .help-text { font-size: 0.85em; color: #7f8c8d; margin-top: 5px;}
+        
+        /* Mobile-friendly Checkbox Groups */
+        .checkbox-group {
+            display: flex; flex-direction: column; gap: 10px;
+            max-height: 200px; overflow-y: auto; border: 1px solid #bdc3c7; 
+            padding: 12px; border-radius: 4px; background: #fafafa;
+        }
+        .checkbox-group label {
+            font-weight: normal; margin-bottom: 0; display: flex; 
+            align-items: center; cursor: pointer; padding: 5px 0;
+        }
+        .checkbox-group input[type="checkbox"] { 
+            margin-right: 12px; transform: scale(1.3); cursor: pointer;
+        }
+        
+        .help-text { font-size: 0.85em; color: #7f8c8d; margin-top: 5px; font-weight: bold;}
         
         button {
             background-color: var(--secondary); color: white; border: none;
-            padding: 12px 24px; font-size: 16px; cursor: pointer;
-            border-radius: 4px; transition: background 0.3s;
+            padding: 14px 24px; font-size: 16px; cursor: pointer;
+            border-radius: 4px; transition: background 0.3s; width: 100%; font-weight: bold;
         }
         button:hover { background-color: #2980b9; }
         button:disabled { background-color: #95a5a6; cursor: not-allowed; }
@@ -60,27 +75,30 @@
         /* Quiz Styles */
         .quiz-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 15px; margin-bottom: 20px;}
         .timer { font-size: 1.2em; font-weight: bold; color: #e74c3c; background: #fadbd8; padding: 5px 15px; border-radius: 20px;}
-        .question-box { margin-bottom: 20px; font-size: 1.2em; }
+        
+        /* FIX FOR TEXT OVERFLOW */
+        .question-box { margin-bottom: 20px; font-size: 1.2em; overflow-x: auto; overflow-wrap: break-word;}
         
         .option-label {
             display: block; padding: 15px; margin: 10px 0;
             background: #f8f9fa; border: 1px solid #e0e0e0;
             border-radius: 4px; cursor: pointer; transition: background 0.2s;
+            overflow-x: auto; /* Prevent math overflow in options */
         }
         .option-label:hover:not(.disabled) { background: #e8f4f8; }
         .option-label.disabled { cursor: not-allowed; opacity: 0.8; }
         
-        /* Instant Feedback Highlights */
         .option-label.correct-instant { background: #d5f5e3; border-color: #27ae60; font-weight: bold; }
         .option-label.incorrect-instant { background: #fadbd8; border-color: #e74c3c; text-decoration: line-through; }
         
-        input[type="radio"] { margin-right: 10px; transform: scale(1.2); }
-        .nav-buttons { display: flex; justify-content: space-between; margin-top: 30px; }
+        input[type="radio"] { margin-right: 12px; transform: scale(1.3); }
+        .nav-buttons { display: flex; gap: 10px; margin-top: 30px; }
 
         /* Results & Explanations Styles */
         .result-item {
             padding: 20px; margin-bottom: 20px; border-radius: 4px;
             border-left: 6px solid; background: #fdfdfd; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            overflow-x: auto; /* FIX FOR TEXT OVERFLOW */
         }
         .result-item.correct { border-left-color: #27ae60; }
         .result-item.incorrect { border-left-color: #c0392b; }
@@ -91,10 +109,34 @@
         .score-display { font-size: 1.8em; font-weight: bold; text-align: center; margin-bottom: 5px; color: var(--primary);}
         .time-display { font-size: 1.2em; text-align: center; margin-bottom: 30px; color: #7f8c8d;}
         
+        /* Explanation Box Overflow Fix */
         .explanation-box {
             margin-top: 15px; padding: 15px; background-color: #eaf2f8;
             border-left: 4px solid var(--secondary); border-radius: 0 4px 4px 0;
             font-size: 0.95em;
+            overflow-x: auto; /* FIX FOR TEXT OVERFLOW */
+            overflow-wrap: break-word;
+        }
+
+        /* Scrollbar styling for code/math boxes */
+        .explanation-box::-webkit-scrollbar, .result-item::-webkit-scrollbar, .question-box::-webkit-scrollbar {
+            height: 6px;
+        }
+        .explanation-box::-webkit-scrollbar-thumb, .result-item::-webkit-scrollbar-thumb, .question-box::-webkit-scrollbar-thumb {
+            background-color: #bdc3c7; border-radius: 4px;
+        }
+        
+        /* Toggle Switch */
+        .sound-toggle-container {
+            display: flex; align-items: center; background: #eaf2f8; padding: 10px 15px; 
+            border-radius: 4px; margin-bottom: 20px; font-weight: bold; border: 1px solid #bce0fd;
+        }
+        .sound-toggle-container input[type="checkbox"] { transform: scale(1.4); margin-right: 15px; cursor: pointer;}
+        
+        @media (min-width: 600px) {
+            body { padding: 30px; }
+            .container { padding: 40px; }
+            button { width: auto; }
         }
     </style>
 </head>
@@ -106,36 +148,46 @@
         <div id="status-msg">Loading configuration...</div>
         
         <div id="setup-form" style="display:none;">
+            
+            <div class="sound-toggle-container">
+                <input type="checkbox" id="sound-toggle" checked>
+                <label for="sound-toggle" style="margin:0; cursor:pointer;">Enable Selection Sound Effects</label>
+            </div>
+
             <div class="form-group">
-                <label for="subject-select">Select Subjects:</label>
-                <select id="subject-select" multiple></select>
+                <label>Select Subjects:</label>
+                <div id="subject-checkboxes" class="checkbox-group"></div>
             </div>
             
             <div class="form-group">
-                <label for="chapter-select">Select Chapters (Leave empty for all):</label>
-                <select id="chapter-select" multiple></select>
+                <label>Select Chapters:</label>
+                <div id="chapter-checkboxes" class="checkbox-group">
+                    <span style="color:#7f8c8d; padding:10px;">Select a subject first...</span>
+                </div>
+                <div class="help-text">Leave chapters unchecked to include all chapters from selected subjects.</div>
             </div>
 
             <div class="form-group">
                 <label for="quiz-mode">Quiz Mode:</label>
                 <select id="quiz-mode">
                     <option value="exam">Exam Mode (Show all answers at the end)</option>
-                    <option value="practice">Practice Mode (Show answers instantly after selection)</option>
+                    <option value="practice">Practice Mode (Show answers instantly)</option>
                 </select>
             </div>
 
             <div class="form-group">
                 <label for="num-questions">Number of Questions:</label>
                 <input type="number" id="num-questions" min="1" value="20">
+                <div class="help-text" id="available-count-msg" style="color:var(--secondary);">Available questions: 0</div>
             </div>
 
-            <button onclick="startQuiz()" id="start-btn">Start Quiz</button>
+            <button onclick="startQuiz()" id="start-btn" disabled>Start Quiz</button>
         </div>
     </div>
 
     <div id="quiz-section" class="section">
         <div class="quiz-header">
-            <h2>Question <span id="current-q-num">1</span> of <span id="total-q-num">10</span></h2>
+            <h2 style="margin:0;">Q. <span id="current-q-num">1</span>/<span id="total-q-num">10</span></h2>
             <div class="timer" id="timer-display">00:00</div>
         </div>
         
@@ -145,9 +197,9 @@
         <div id="instant-feedback-container" style="display:none;"></div>
         
         <div class="nav-buttons">
-            <button id="prev-btn" onclick="prevQuestion()" disabled>Previous</button>
-            <button id="next-btn" onclick="nextQuestion()">Next</button>
-            <button id="submit-btn" onclick="submitQuiz()" style="display:none; background-color: #27ae60;">Submit Quiz</button>
+            <button id="prev-btn" onclick="prevQuestion()" disabled style="background-color: #95a5a6;">Previous</button>
+            <button id="next-btn" onclick="nextQuestion()" style="flex-grow: 1;">Next</button>
+            <button id="submit-btn" onclick="submitQuiz()" style="display:none; background-color: #27ae60; flex-grow: 1;">Submit Quiz</button>
         </div>
     </div>
 
@@ -155,28 +207,29 @@
         <h1>Detailed Quiz Results</h1>
         <div class="score-display" id="score-display"></div>
         <div class="time-display" id="final-time-display"></div>
-        <button onclick="location.reload()" style="margin-bottom: 30px;">Take Another Quiz</button>
+        <button onclick="location.reload()" style="margin-bottom: 30px; width: 100%;">Take Another Quiz</button>
         <div id="review-container"></div>
     </div>
 </div>
 
 <script>
     let appConfig = {};
+    let fileCache = {}; // Cache downloaded question JSON files
+    let totalAvailable = 0;
+    
     let activeQuestions = [];
     let currentQIndex = 0;
     let userAnswers = []; 
     let quizMode = 'exam';
     
-    // Timer Variables
     let timerInterval;
     let elapsedSeconds = 0;
+    let audioCtx; // For sound effects
 
     // DOM Elements
     const setupSection = document.getElementById('setup-section');
     const quizSection = document.getElementById('quiz-section');
     const resultSection = document.getElementById('result-section');
-    const subjectSelect = document.getElementById('subject-select');
-    const chapterSelect = document.getElementById('chapter-select');
     const statusMsg = document.getElementById('status-msg');
     const timerDisplay = document.getElementById('timer-display');
 
@@ -195,41 +248,51 @@
         }
     };
 
+    // 2. Populate Checkboxes dynamically
     function populateSubjects() {
         const subjects = Object.keys(appConfig).sort();
-        subjectSelect.innerHTML = subjects.map(s => `<option value="${s}">${s}</option>`).join('');
-
-        subjectSelect.addEventListener('change', () => {
-            const selectedSubjects = Array.from(subjectSelect.selectedOptions).map(opt => opt.value);
-            let chaptersHtml = '';
-            
-            selectedSubjects.forEach(subject => {
-                const chapters = Object.keys(appConfig[subject]);
-                chaptersHtml += `<optgroup label="${subject}">`;
-                chapters.forEach(chapter => {
-                    chaptersHtml += `<option value="${subject}|${chapter}">${chapter}</option>`;
-                });
-                chaptersHtml += `</optgroup>`;
-            });
-            
-            chapterSelect.innerHTML = chaptersHtml;
-        });
+        const subContainer = document.getElementById('subject-checkboxes');
+        subContainer.innerHTML = subjects.map(s => 
+            `<label><input type="checkbox" class="subject-cb" value="${s}" onchange="handleSubjectChange()"> ${s}</label>`
+        ).join('');
     }
 
-    // 2. Fetch required files, Shuffle, and Start Quiz
-    async function startQuiz() {
-        const selectedSubjects = Array.from(subjectSelect.selectedOptions).map(opt => opt.value);
-        const selectedChapterValues = Array.from(chapterSelect.selectedOptions).map(opt => opt.value);
-        quizMode = document.getElementById('quiz-mode').value;
+    function handleSubjectChange() {
+        const selectedSubjects = Array.from(document.querySelectorAll('.subject-cb:checked')).map(cb => cb.value);
+        const chapContainer = document.getElementById('chapter-checkboxes');
         
         if (selectedSubjects.length === 0) {
-            alert("Please select at least one subject.");
+            chapContainer.innerHTML = '<span style="color:#7f8c8d; padding:10px;">Select a subject first...</span>';
+            updateQuestionCount();
             return;
         }
 
-        document.getElementById('setup-form').style.display = 'none';
-        statusMsg.style.display = 'block';
-        statusMsg.innerText = "Downloading question banks...";
+        let chaptersHtml = '';
+        selectedSubjects.forEach(subject => {
+            const chapters = Object.keys(appConfig[subject]);
+            chaptersHtml += `<div style="font-weight:bold; margin: 10px 0 5px 0; color:var(--primary); padding-left:5px;">${subject}</div>`;
+            chapters.forEach(chapter => {
+                chaptersHtml += `<label style="margin-left:15px; background:#fff; padding:5px; border-radius:4px; border:1px solid #eee; margin-bottom:4px;"><input type="checkbox" class="chapter-cb" value="${subject}|${chapter}" onchange="updateQuestionCount()"> ${chapter}</label>`;
+            });
+        });
+        
+        chapContainer.innerHTML = chaptersHtml;
+        updateQuestionCount();
+    }
+
+    // 3. Dynamic Question Counting & Caching
+    async function updateQuestionCount() {
+        const selectedSubjects = Array.from(document.querySelectorAll('.subject-cb:checked')).map(cb => cb.value);
+        const selectedChapterValues = Array.from(document.querySelectorAll('.chapter-cb:checked')).map(cb => cb.value);
+
+        if (selectedSubjects.length === 0) {
+            totalAvailable = 0;
+            updateAvailableUI();
+            return;
+        }
+
+        document.getElementById('available-count-msg').innerText = "Loading questions...";
+        document.getElementById('start-btn').disabled = true;
 
         let filesToFetch = [];
         selectedSubjects.forEach(subject => {
@@ -241,41 +304,102 @@
             }
         });
 
+        let poolCount = 0;
+        for (let item of filesToFetch) {
+            if (!fileCache[item.filePath]) {
+                try {
+                    const res = await fetch(item.filePath);
+                    const data = res.ok ? await res.json() : [];
+                    fileCache[item.filePath] = data.map(q => ({ ...q, subject: item.subject, chapter: item.chapter }));
+                } catch (e) {
+                    fileCache[item.filePath] = [];
+                }
+            }
+            poolCount += fileCache[item.filePath].length;
+        }
+
+        totalAvailable = poolCount;
+        updateAvailableUI();
+    }
+
+    function updateAvailableUI() {
+        const numInput = document.getElementById('num-questions');
+        numInput.max = totalAvailable;
+        
+        if (totalAvailable > 0 && parseInt(numInput.value) > totalAvailable) {
+            numInput.value = totalAvailable;
+        }
+        
+        document.getElementById('available-count-msg').innerText = `Available questions: ${totalAvailable}`;
+        document.getElementById('start-btn').disabled = totalAvailable === 0;
+    }
+
+    // 4. Sound Generator (Web Audio API - No external files needed)
+    function playClickSound() {
+        const isSoundEnabled = document.getElementById('sound-toggle').checked;
+        if (!isSoundEnabled) return;
+
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        // Short "pop/click" sound configuration
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.05);
+    }
+
+    // 5. Start Quiz
+    function startQuiz() {
+        if (totalAvailable === 0) return;
+
+        const selectedSubjects = Array.from(document.querySelectorAll('.subject-cb:checked')).map(cb => cb.value);
+        const selectedChapterValues = Array.from(document.querySelectorAll('.chapter-cb:checked')).map(cb => cb.value);
+        quizMode = document.getElementById('quiz-mode').value;
+
+        // Initialize Audio context on user gesture (Start button click)
+        if (document.getElementById('sound-toggle').checked && !audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
         let combinedPool = [];
-        try {
-            const fetchPromises = filesToFetch.map(item => 
-                fetch(item.filePath)
-                .then(res => res.ok ? res.json() : [])
-                .then(data => data.map(q => ({ ...q, subject: item.subject, chapter: item.chapter })))
-                .catch(() => { return []; })
-            );
+        selectedSubjects.forEach(subject => {
+            const subjectChapters = appConfig[subject];
+            for (const [chapter, filePath] of Object.entries(subjectChapters)) {
+                if (selectedChapterValues.length === 0 || selectedChapterValues.includes(`${subject}|${chapter}`)) {
+                    if (fileCache[filePath]) {
+                        combinedPool.push(...fileCache[filePath]);
+                    }
+                }
+            }
+        });
 
-            const results = await Promise.all(fetchPromises);
-            combinedPool = results.flat();
-
-        } catch (err) {
-            statusMsg.innerHTML = `<span style="color:red">Error fetching questions.</span>`;
-            return;
-        }
-
-        if (combinedPool.length === 0) {
-            alert("No questions found in the selected files.");
-            location.reload();
-            return;
-        }
-
-        // True Random Shuffle (Fisher-Yates) every time a quiz starts
+        // Fisher-Yates Shuffle
         for (let i = combinedPool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [combinedPool[i], combinedPool[j]] = [combinedPool[j], combinedPool[i]];
         }
 
         let requestedNum = parseInt(document.getElementById('num-questions').value);
-        activeQuestions = combinedPool.slice(0, Math.min(requestedNum, combinedPool.length));
+        if (requestedNum > totalAvailable) requestedNum = totalAvailable;
+
+        activeQuestions = combinedPool.slice(0, requestedNum);
         userAnswers = new Array(activeQuestions.length).fill(null);
         currentQIndex = 0;
 
-        statusMsg.style.display = 'none';
         setupSection.classList.remove('active');
         quizSection.classList.add('active');
         document.getElementById('total-q-num').innerText = activeQuestions.length;
@@ -284,7 +408,7 @@
         loadQuestion();
     }
 
-    // 3. Timer Logic
+    // 6. Timer Logic
     function startTimer() {
         elapsedSeconds = 0;
         timerDisplay.innerText = "00:00";
@@ -295,21 +419,19 @@
             timerDisplay.innerText = `${m}:${s}`;
         }, 1000);
     }
-    
     function stopTimer() { clearInterval(timerInterval); }
 
-    // 4. Render Question
+    // 7. Render Question
     function loadQuestion() {
         const q = activeQuestions[currentQIndex];
         document.getElementById('current-q-num').innerText = currentQIndex + 1;
         
         const qBox = document.getElementById('question-text');
-        qBox.innerHTML = `<span style="color:#7f8c8d; font-size:0.85em;">[${q.subject} > ${q.chapter}]</span><br><br>${q.question}`;
+        qBox.innerHTML = `<span style="color:#7f8c8d; font-size:0.85em; font-weight:bold;">[${q.subject} > ${q.chapter}]</span><br><br>${q.question}`;
         
         const optContainer = document.getElementById('options-container');
         optContainer.innerHTML = '';
         
-        // Hide instant feedback initially on load
         document.getElementById('instant-feedback-container').style.display = 'none';
         
         q.options.forEach((optText, index) => {
@@ -322,7 +444,6 @@
             `;
         });
 
-        // Navigation UI logic
         document.getElementById('prev-btn').disabled = currentQIndex === 0;
         if (currentQIndex === activeQuestions.length - 1) {
             document.getElementById('next-btn').style.display = 'none';
@@ -332,7 +453,6 @@
             document.getElementById('submit-btn').style.display = 'none';
         }
 
-        // If in practice mode and already answered, show the static feedback immediately
         if (quizMode === 'practice' && userAnswers[currentQIndex] !== null) {
             revealInstantFeedback();
         }
@@ -340,38 +460,33 @@
         renderMath();
     }
 
-    // Handle user clicking an option
     function handleSelection(index) {
+        playClickSound(); // Trigger sound on click
+
         if (quizMode === 'practice') {
-            // In practice mode, lock in the answer once clicked
             if (userAnswers[currentQIndex] === null) {
                 userAnswers[currentQIndex] = index;
                 revealInstantFeedback();
             } else {
-                // Prevent changing the radio button if already answered
                 const radios = document.getElementsByName('option');
                 radios[userAnswers[currentQIndex]].checked = true;
             }
         } else {
-            // Exam mode: allow changing answers freely
             userAnswers[currentQIndex] = index;
         }
     }
 
-    // Reveal Logic for Practice Mode
     function revealInstantFeedback() {
         const q = activeQuestions[currentQIndex];
         const selectedIndex = userAnswers[currentQIndex];
         const correctIndex = q.answer;
 
-        // Disable all radio buttons to prevent changes
         const radios = document.getElementsByName('option');
         radios.forEach((radio, idx) => {
             radio.disabled = true;
             const label = document.getElementById(`label-opt-${idx}`);
             label.classList.add('disabled');
             
-            // Highlight styling
             if (idx === correctIndex) {
                 label.classList.add('correct-instant');
             } else if (idx === selectedIndex && selectedIndex !== correctIndex) {
@@ -379,7 +494,6 @@
             }
         });
 
-        // Show Explanation Box
         const feedbackContainer = document.getElementById('instant-feedback-container');
         feedbackContainer.style.display = 'block';
         
@@ -395,15 +509,10 @@
         renderMath();
     }
 
-    function nextQuestion() {
-        if (currentQIndex < activeQuestions.length - 1) { currentQIndex++; loadQuestion(); }
-    }
+    function nextQuestion() { if (currentQIndex < activeQuestions.length - 1) { currentQIndex++; loadQuestion(); } }
+    function prevQuestion() { if (currentQIndex > 0) { currentQIndex--; loadQuestion(); } }
 
-    function prevQuestion() {
-        if (currentQIndex > 0) { currentQIndex--; loadQuestion(); }
-    }
-
-    // 5. Submit and Show Detailed Results
+    // 8. Submit and Show Results
     function submitQuiz() {
         if (userAnswers.includes(null)) {
             if (!confirm("You have unanswered questions. Are you sure you want to submit?")) return;
@@ -428,7 +537,7 @@
 
             reviewHTML += `
                 <div class="result-item ${statusClass}">
-                    <p style="color:#7f8c8d; font-size:0.85em; margin-bottom:5px;">[${q.subject} > ${q.chapter}]</p>
+                    <p style="color:#7f8c8d; font-size:0.85em; margin-bottom:5px; font-weight:bold;">[${q.subject} > ${q.chapter}]</p>
                     <p><strong>Q${i+1}:</strong> ${q.question}</p>
                     <p>
                         Your Answer: <span class="${isCorrect ? 'answer-correct' : 'answer-incorrect'}">
@@ -444,13 +553,11 @@
 
         document.getElementById('score-display').innerText = `Score: ${score} / ${activeQuestions.length}`;
         
-        // Display final time
         let m = Math.floor(elapsedSeconds / 60).toString().padStart(2, '0');
         let s = (elapsedSeconds % 60).toString().padStart(2, '0');
         document.getElementById('final-time-display').innerText = `Time Taken: ${m} minutes and ${s} seconds`;
         
         document.getElementById('review-container').innerHTML = reviewHTML;
-        
         renderMath();
     }
 
