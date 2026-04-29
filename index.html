@@ -92,9 +92,16 @@
 
         /* Profile Section */
         .profile-header { text-align: center; margin-bottom: 30px; }
-        .name-input-group { display: flex; gap: 10px; justify-content: center; max-width: 400px; margin: 0 auto 20px;}
+        
+        .edit-icon-btn {
+            background: transparent; border: none; font-size: 0.8em; cursor: pointer;
+            padding: 8px; width: auto; border-radius: 50%; color: var(--text-color); transition: background 0.2s;
+        }
+        .edit-icon-btn:hover { background: #e0e0e0; }
+
+        .name-input-group { display: flex; gap: 10px; justify-content: center; max-width: 400px; margin: 10px auto 20px;}
         .name-input-group input { flex-grow: 1; }
-        .name-input-group button { width: auto; background-color: var(--success); }
+        .name-input-group button { width: auto; padding: 10px 20px; }
 
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-bottom: 30px;}
         .stat-card { background: #eaf2f8; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #bce0fd;}
@@ -115,8 +122,10 @@
         .badge-wrong { color: var(--danger); background: #fadbd8; }
 
         /* Quiz Styles */
-        .quiz-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 15px; margin-bottom: 20px;}
+        .quiz-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;}
+        .timer-container { display: flex; align-items: center; gap: 10px; }
         .timer { font-size: 1.2em; font-weight: bold; color: var(--danger); background: #fadbd8; padding: 5px 15px; border-radius: 20px;}
+        
         .question-box { margin-bottom: 20px; font-size: 1.2em; overflow-x: auto; overflow-wrap: break-word;}
         .option-label { display: block; padding: 15px; margin: 10px 0; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 4px; cursor: pointer; transition: background 0.2s; overflow-x: auto;}
         .option-label:hover:not(.disabled) { background: #e8f4f8; }
@@ -149,7 +158,7 @@
 </head>
 <body>
 
-<div class="navbar">
+<div class="navbar" id="main-navbar">
     <h2>MCQ Mastery</h2>
     <div class="nav-buttons">
         <button onclick="navigate('setup-section')">Home</button>
@@ -202,10 +211,15 @@
 
     <div id="profile-section" class="section">
         <div class="profile-header">
-            <h1 id="greeting-text">My Profile</h1>
-            <div class="name-input-group">
+            <h1 style="display:flex; justify-content:center; align-items:center; gap: 10px; margin-bottom: 5px;">
+                <span id="greeting-text">My Profile</span>
+                <button class="edit-icon-btn" onclick="toggleNameEdit()" title="Edit Name">✏️</button>
+            </h1>
+            
+            <div id="name-edit-group" class="name-input-group" style="display:none;">
                 <input type="text" id="user-name-input" placeholder="Enter your name...">
-                <button onclick="saveProfileName()">Save Name</button>
+                <button onclick="saveProfileName()" style="background-color: var(--success);">Save</button>
+                <button onclick="toggleNameEdit()" style="background-color: #95a5a6;">Cancel</button>
             </div>
         </div>
 
@@ -232,7 +246,10 @@
     <div id="quiz-section" class="section">
         <div class="quiz-header">
             <h2 style="margin:0;">Q. <span id="current-q-num">1</span>/<span id="total-q-num">10</span></h2>
-            <div class="timer" id="timer-display">00:00</div>
+            <div class="timer-container">
+                <div class="timer" id="timer-display">00:00</div>
+                <button onclick="cancelQuiz()" style="background-color: var(--danger); padding: 6px 12px; font-size: 14px; width: auto;">Cancel</button>
+            </div>
         </div>
         
         <div id="question-text" class="question-box"></div>
@@ -277,6 +294,7 @@
     const numInput = document.getElementById('num-questions');
     const warningMsg = document.getElementById('question-warning');
     const startBtn = document.getElementById('start-btn');
+    const mainNavbar = document.getElementById('main-navbar');
 
     // 1. Initialization
     window.onload = async () => {
@@ -316,34 +334,40 @@
         localStorage.setItem('mcq_user_profile', JSON.stringify(userProfile));
     }
 
+    function toggleNameEdit() {
+        const editGroup = document.getElementById('name-edit-group');
+        if (editGroup.style.display === 'none') {
+            editGroup.style.display = 'flex';
+            document.getElementById('user-name-input').value = userProfile.name || '';
+            document.getElementById('user-name-input').focus();
+        } else {
+            editGroup.style.display = 'none';
+        }
+    }
+
     function saveProfileName() {
         const name = document.getElementById('user-name-input').value.trim();
         userProfile.name = name;
         saveProfileData();
+        toggleNameEdit(); 
         renderProfileDashboard();
-        alert("Profile name saved!");
     }
 
     function renderProfileDashboard() {
-        document.getElementById('user-name-input').value = userProfile.name;
         document.getElementById('greeting-text').innerText = userProfile.name ? `${userProfile.name}'s Profile` : `My Profile`;
 
         const totalQuizzes = userProfile.history.length;
         let totalQuestions = 0;
         let totalCorrect = 0;
-
         let historyHtml = '';
 
         if (totalQuizzes === 0) {
             historyHtml = `<p style="text-align:center; color:#7f8c8d;">You haven't taken any quizzes yet!</p>`;
         } else {
-            // Reverse history to show newest first
             const reversedHistory = [...userProfile.history].reverse();
-            
             reversedHistory.forEach(quiz => {
                 totalQuestions += quiz.total;
                 totalCorrect += quiz.correct;
-                
                 const acc = Math.round((quiz.correct / quiz.total) * 100);
                 
                 historyHtml += `
@@ -363,7 +387,6 @@
         }
 
         const avgAccuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
-
         document.getElementById('stat-total-quizzes').innerText = totalQuizzes;
         document.getElementById('stat-total-questions').innerText = totalQuestions;
         document.getElementById('stat-accuracy').innerText = `${avgAccuracy}%`;
@@ -504,7 +527,6 @@
             }
         });
 
-        // Fisher-Yates Shuffle
         for (let i = combinedPool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [combinedPool[i], combinedPool[j]] = [combinedPool[j], combinedPool[i]];
@@ -514,11 +536,18 @@
         userAnswers = new Array(activeQuestions.length).fill(null);
         currentQIndex = 0;
 
+        mainNavbar.style.display = 'none'; // Hide navbar
         navigate('quiz-section');
         document.getElementById('total-q-num').innerText = activeQuestions.length;
         
         startTimer();
         loadQuestion();
+    }
+
+    function cancelQuiz() {
+        stopTimer();
+        mainNavbar.style.display = 'flex'; // Restore navbar
+        navigate('setup-section');
     }
 
     function startTimer() {
@@ -612,9 +641,9 @@
 
     // 8. Submit, Save History, and Show Results
     function submitQuiz() {
-        if (userAnswers.includes(null) && !confirm("You have unanswered questions. Submit anyway?")) return;
-
+        // Removed the confirm prompt for unanswered questions
         stopTimer();
+        mainNavbar.style.display = 'flex'; // Restore navbar
         navigate('result-section');
         
         let score = 0, wrongCount = 0, unansweredCount = 0;
