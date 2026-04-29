@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced MCQ Quiz App</title>
     
+    <script src="[https://cdn.jsdelivr.net/npm/marked/marked.min.js](https://cdn.jsdelivr.net/npm/marked/marked.min.js)"></script>
+
     <script>
         MathJax = {
             tex: {
@@ -14,7 +16,7 @@
             startup: { typeset: false }
         };
     </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script id="MathJax-script" async src="[https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js](https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js)"></script>
 
     <style>
         :root {
@@ -126,13 +128,18 @@
         .timer-container { display: flex; align-items: center; gap: 10px; }
         .timer { font-size: 1.2em; font-weight: bold; color: var(--danger); background: #fadbd8; padding: 5px 15px; border-radius: 20px;}
         
+        /* Handle Markdown images and overflow */
         .question-box { margin-bottom: 20px; font-size: 1.2em; overflow-x: auto; overflow-wrap: break-word;}
+        .question-box img, .explanation-box img { max-width: 100%; height: auto; border-radius: 4px; margin-top: 10px; }
+        
         .option-label { display: block; padding: 15px; margin: 10px 0; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 4px; cursor: pointer; transition: background 0.2s; overflow-x: auto;}
         .option-label:hover:not(.disabled) { background: #e8f4f8; }
         .option-label.disabled { cursor: not-allowed; opacity: 0.8; }
         .option-label.correct-instant { background: #d5f5e3; border-color: var(--success); font-weight: bold; }
         .option-label.incorrect-instant { background: #fadbd8; border-color: var(--danger); text-decoration: line-through; }
         input[type="radio"] { margin-right: 12px; transform: scale(1.3); }
+        
+        .markdown-inline-wrapper { display: inline-block; vertical-align: middle; }
         
         /* Fixed Navigation Buttons */
         .nav-buttons { display: flex; gap: 10px; margin-top: 30px; width: 100%; justify-content: space-between;}
@@ -147,7 +154,11 @@
         .answer-incorrect { color: var(--danger); font-weight: bold; }
         .score-display { font-size: 1.8em; font-weight: bold; text-align: center; margin-bottom: 5px; color: var(--primary);}
         .time-display { font-size: 1.2em; text-align: center; margin-bottom: 30px; color: #7f8c8d;}
+        
+        /* Markdown removes top margin of first element usually, this keeps it neat */
         .explanation-box { margin-top: 15px; padding: 15px; background-color: #eaf2f8; border-left: 4px solid var(--secondary); border-radius: 0 4px 4px 0; font-size: 0.95em; overflow-x: auto; overflow-wrap: break-word; }
+        .explanation-box p:first-child { margin-top: 0; }
+        .explanation-box p:last-child { margin-bottom: 0; }
 
         .sound-toggle-container { display: flex; align-items: center; background: #eaf2f8; padding: 10px 15px; border-radius: 4px; margin-bottom: 20px; font-weight: bold; border: 1px solid #bce0fd; }
         .sound-toggle-container input[type="checkbox"] { transform: scale(1.4); margin-right: 15px; cursor: pointer;}
@@ -298,6 +309,9 @@
     const warningMsg = document.getElementById('question-warning');
     const startBtn = document.getElementById('start-btn');
     const mainNavbar = document.getElementById('main-navbar');
+
+    // Configure Marked.js slightly so it doesn't break MathJax if not necessary
+    marked.setOptions({ breaks: true });
 
     // 1. Initialization
     window.onload = async () => {
@@ -571,7 +585,8 @@
         document.getElementById('current-q-num').innerText = currentQIndex + 1;
         
         const qBox = document.getElementById('question-text');
-        qBox.innerHTML = `<span style="color:#7f8c8d; font-size:0.85em; font-weight:bold;">[${q.subject} > ${q.chapter}]</span><br><br>${q.question}`;
+        // Render markdown for question
+        qBox.innerHTML = `<span style="color:#7f8c8d; font-size:0.85em; font-weight:bold; display:block; margin-bottom:10px;">[${q.subject} > ${q.chapter}]</span>${marked.parse(q.question)}`;
         
         const optContainer = document.getElementById('options-container');
         optContainer.innerHTML = '';
@@ -579,17 +594,17 @@
         
         q.options.forEach((optText, index) => {
             const isChecked = userAnswers[currentQIndex] === index ? 'checked' : '';
+            // Render markdown inline for options
             optContainer.innerHTML += `
                 <label class="option-label" id="label-opt-${index}">
                     <input type="radio" name="option" value="${index}" ${isChecked} onchange="handleSelection(${index})">
-                    ${optText}
+                    <div class="markdown-inline-wrapper">${marked.parseInline(optText)}</div>
                 </label>
             `;
         });
 
         document.getElementById('prev-btn').disabled = currentQIndex === 0;
         
-        // Fix for Next/Submit visibility
         if (currentQIndex === activeQuestions.length - 1) {
             document.getElementById('next-btn').style.display = 'none';
             document.getElementById('submit-btn').style.display = '';
@@ -631,12 +646,16 @@
 
         const feedbackContainer = document.getElementById('instant-feedback-container');
         feedbackContainer.style.display = 'block';
-        let expHtml = q.explanation ? q.explanation.replace(/\n/g, '<br>') : "No explanation provided.";
+        
+        // Render markdown for explanation
+        let expHtml = q.explanation ? `<div class="explanation-box">${marked.parse(q.explanation)}</div>` : `<div class="explanation-box">No explanation provided.</div>`;
+        
         feedbackContainer.innerHTML = `
-            <div class="explanation-box">
+            <div style="margin-top:15px;">
                 <span class="${selectedIndex === correctIndex ? 'answer-correct' : 'answer-incorrect'}">
                     ${selectedIndex === correctIndex ? 'Correct!' : 'Incorrect.'}
-                </span><br><br>${expHtml}
+                </span>
+                ${expHtml}
             </div>`;
         renderMath();
     }
@@ -665,16 +684,18 @@
             else wrongCount++;
 
             let statusClass = isCorrect ? 'correct' : (isUnanswered ? 'unanswered' : 'incorrect');
-            let expHtml = q.explanation ? `<div class="explanation-box">${q.explanation.replace(/\n/g, '<br>')}</div>` : '';
+            
+            // Render markdown for explanation in results
+            let expHtml = q.explanation ? `<div class="explanation-box">${marked.parse(q.explanation)}</div>` : '';
 
             reviewHTML += `
                 <div class="result-item ${statusClass}">
                     <p style="color:#7f8c8d; font-size:0.85em; margin-bottom:5px; font-weight:bold;">[${q.subject} > ${q.chapter}]</p>
-                    <p><strong>Q${i+1}:</strong> ${q.question}</p>
+                    <div style="margin-bottom: 10px;"><strong>Q${i+1}:</strong> ${marked.parseInline(q.question)}</div>
                     <p>Your Answer: <span class="${isCorrect ? 'answer-correct' : 'answer-incorrect'}">
-                            ${isUnanswered ? 'None' : q.options[userAnswer]}
+                            ${isUnanswered ? 'None' : marked.parseInline(q.options[userAnswer])}
                         </span></p>
-                    ${!isCorrect ? `<p>Correct Answer: <span class="answer-correct">${q.options[q.answer]}</span></p>` : ''}
+                    ${!isCorrect ? `<p>Correct Answer: <span class="answer-correct">${marked.parseInline(q.options[q.answer])}</span></p>` : ''}
                     ${expHtml}
                 </div>`;
         });
