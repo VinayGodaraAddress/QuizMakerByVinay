@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced MCQ Quiz App</title>
+    
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            startup: { typeset: false }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --bg-color: #ecf0f1;
+            --container-bg: #ffffff;
+            --text-color: #2c3e50;
+            --border-radius: 8px;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color); color: var(--text-color);
+            line-height: 1.6; padding: 20px; margin: 0;
+        }
+        .container {
+            max-width: 850px; margin: 0 auto; background: var(--container-bg);
+            padding: 30px; border-radius: var(--border-radius);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 { color: var(--primary); }
+        .section { display: none; }
+        .section.active { display: block; }
+        
+        /* Setup Form */
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; }
+        select, input[type="number"] {
+            width: 100%; padding: 10px; border: 1px solid #bdc3c7;
+            border-radius: 4px; font-size: 16px;
+        }
+        select[multiple] { height: 140px; }
+        .help-text { font-size: 0.85em; color: #7f8c8d; margin-top: 5px;}
+        
+        button {
+            background-color: var(--secondary); color: white; border: none;
+            padding: 12px 24px; font-size: 16px; cursor: pointer;
+            border-radius: 4px; transition: background 0.3s;
+        }
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+
+        /* Quiz Styles */
+        .quiz-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 15px; margin-bottom: 20px;}
+        .timer { font-size: 1.2em; font-weight: bold; color: #e74c3c; background: #fadbd8; padding: 5px 15px; border-radius: 20px;}
+        .question-box { margin-bottom: 20px; font-size: 1.2em; }
+        
+        .option-label {
+            display: block; padding: 15px; margin: 10px 0;
+            background: #f8f9fa; border: 1px solid #e0e0e0;
+            border-radius: 4px; cursor: pointer; transition: background 0.2s;
+        }
+        .option-label:hover:not(.disabled) { background: #e8f4f8; }
+        .option-label.disabled { cursor: not-allowed; opacity: 0.8; }
+        
+        /* Instant Feedback Highlights */
+        .option-label.correct-instant { background: #d5f5e3; border-color: #27ae60; font-weight: bold; }
+        .option-label.incorrect-instant { background: #fadbd8; border-color: #e74c3c; text-decoration: line-through; }
+        
+        input[type="radio"] { margin-right: 10px; transform: scale(1.2); }
+        .nav-buttons { display: flex; justify-content: space-between; margin-top: 30px; }
+
+        /* Results & Explanations Styles */
+        .result-item {
+            padding: 20px; margin-bottom: 20px; border-radius: 4px;
+            border-left: 6px solid; background: #fdfdfd; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .result-item.correct { border-left-color: #27ae60; }
+        .result-item.incorrect { border-left-color: #c0392b; }
+        .result-item.unanswered { border-left-color: #f39c12; }
+        
+        .answer-correct { color: #27ae60; font-weight: bold; }
+        .answer-incorrect { color: #c0392b; font-weight: bold; }
+        .score-display { font-size: 1.8em; font-weight: bold; text-align: center; margin-bottom: 5px; color: var(--primary);}
+        .time-display { font-size: 1.2em; text-align: center; margin-bottom: 30px; color: #7f8c8d;}
+        
+        .explanation-box {
+            margin-top: 15px; padding: 15px; background-color: #eaf2f8;
+            border-left: 4px solid var(--secondary); border-radius: 0 4px 4px 0;
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="setup-section" class="section active">
+        <h1>Quiz Setup</h1>
+        <div id="status-msg">Loading configuration...</div>
+        
+        <div id="setup-form" style="display:none;">
+            <div class="form-group">
+                <label for="subject-select">Select Subjects:</label>
+                <select id="subject-select" multiple></select>
+            </div>
+            
+            <div class="form-group">
+                <label for="chapter-select">Select Chapters (Leave empty for all):</label>
+                <select id="chapter-select" multiple></select>
+            </div>
+
+            <div class="form-group">
+                <label for="quiz-mode">Quiz Mode:</label>
+                <select id="quiz-mode">
+                    <option value="exam">Exam Mode (Show all answers at the end)</option>
+                    <option value="practice">Practice Mode (Show answers instantly after selection)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="num-questions">Number of Questions:</label>
+                <input type="number" id="num-questions" min="1" value="20">
+            </div>
+
+            <button onclick="startQuiz()" id="start-btn">Start Quiz</button>
+        </div>
+    </div>
+
+    <div id="quiz-section" class="section">
+        <div class="quiz-header">
+            <h2>Question <span id="current-q-num">1</span> of <span id="total-q-num">10</span></h2>
+            <div class="timer" id="timer-display">00:00</div>
+        </div>
+        
+        <div id="question-text" class="question-box"></div>
+        <div id="options-container"></div>
+        
+        <div id="instant-feedback-container" style="display:none;"></div>
+        
+        <div class="nav-buttons">
+            <button id="prev-btn" onclick="prevQuestion()" disabled>Previous</button>
+            <button id="next-btn" onclick="nextQuestion()">Next</button>
+            <button id="submit-btn" onclick="submitQuiz()" style="display:none; background-color: #27ae60;">Submit Quiz</button>
+        </div>
+    </div>
+
+    <div id="result-section" class="section">
+        <h1>Detailed Quiz Results</h1>
+        <div class="score-display" id="score-display"></div>
+        <div class="time-display" id="final-time-display"></div>
+        <button onclick="location.reload()" style="margin-bottom: 30px;">Take Another Quiz</button>
+        <div id="review-container"></div>
+    </div>
+</div>
+
+<script>
+    let appConfig = {};
+    let activeQuestions = [];
+    let currentQIndex = 0;
+    let userAnswers = []; 
+    let quizMode = 'exam';
+    
+    // Timer Variables
+    let timerInterval;
+    let elapsedSeconds = 0;
+
+    // DOM Elements
+    const setupSection = document.getElementById('setup-section');
+    const quizSection = document.getElementById('quiz-section');
+    const resultSection = document.getElementById('result-section');
+    const subjectSelect = document.getElementById('subject-select');
+    const chapterSelect = document.getElementById('chapter-select');
+    const statusMsg = document.getElementById('status-msg');
+    const timerDisplay = document.getElementById('timer-display');
+
+    // 1. Load Configuration Map on Startup
+    window.onload = async () => {
+        try {
+            const response = await fetch('config.json');
+            if (!response.ok) throw new Error("Failed to load config.json");
+            appConfig = await response.json();
+            
+            statusMsg.style.display = 'none';
+            document.getElementById('setup-form').style.display = 'block';
+            populateSubjects();
+        } catch (error) {
+            statusMsg.innerHTML = `<span style="color:red">Error: ${error.message}. Make sure config.json exists.</span>`;
+        }
+    };
+
+    function populateSubjects() {
+        const subjects = Object.keys(appConfig).sort();
+        subjectSelect.innerHTML = subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+
+        subjectSelect.addEventListener('change', () => {
+            const selectedSubjects = Array.from(subjectSelect.selectedOptions).map(opt => opt.value);
+            let chaptersHtml = '';
+            
+            selectedSubjects.forEach(subject => {
+                const chapters = Object.keys(appConfig[subject]);
+                chaptersHtml += `<optgroup label="${subject}">`;
+                chapters.forEach(chapter => {
+                    chaptersHtml += `<option value="${subject}|${chapter}">${chapter}</option>`;
+                });
+                chaptersHtml += `</optgroup>`;
+            });
+            
+            chapterSelect.innerHTML = chaptersHtml;
+        });
+    }
+
+    // 2. Fetch required files, Shuffle, and Start Quiz
+    async function startQuiz() {
+        const selectedSubjects = Array.from(subjectSelect.selectedOptions).map(opt => opt.value);
+        const selectedChapterValues = Array.from(chapterSelect.selectedOptions).map(opt => opt.value);
+        quizMode = document.getElementById('quiz-mode').value;
+        
+        if (selectedSubjects.length === 0) {
+            alert("Please select at least one subject.");
+            return;
+        }
+
+        document.getElementById('setup-form').style.display = 'none';
+        statusMsg.style.display = 'block';
+        statusMsg.innerText = "Downloading question banks...";
+
+        let filesToFetch = [];
+        selectedSubjects.forEach(subject => {
+            const subjectChapters = appConfig[subject];
+            for (const [chapter, filePath] of Object.entries(subjectChapters)) {
+                if (selectedChapterValues.length === 0 || selectedChapterValues.includes(`${subject}|${chapter}`)) {
+                    filesToFetch.push({ subject, chapter, filePath });
+                }
+            }
+        });
+
+        let combinedPool = [];
+        try {
+            const fetchPromises = filesToFetch.map(item => 
+                fetch(item.filePath)
+                .then(res => res.ok ? res.json() : [])
+                .then(data => data.map(q => ({ ...q, subject: item.subject, chapter: item.chapter })))
+                .catch(() => { return []; })
+            );
+
+            const results = await Promise.all(fetchPromises);
+            combinedPool = results.flat();
+
+        } catch (err) {
+            statusMsg.innerHTML = `<span style="color:red">Error fetching questions.</span>`;
+            return;
+        }
+
+        if (combinedPool.length === 0) {
+            alert("No questions found in the selected files.");
+            location.reload();
+            return;
+        }
+
+        // True Random Shuffle (Fisher-Yates) every time a quiz starts
+        for (let i = combinedPool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [combinedPool[i], combinedPool[j]] = [combinedPool[j], combinedPool[i]];
+        }
+
+        let requestedNum = parseInt(document.getElementById('num-questions').value);
+        activeQuestions = combinedPool.slice(0, Math.min(requestedNum, combinedPool.length));
+        userAnswers = new Array(activeQuestions.length).fill(null);
+        currentQIndex = 0;
+
+        statusMsg.style.display = 'none';
+        setupSection.classList.remove('active');
+        quizSection.classList.add('active');
+        document.getElementById('total-q-num').innerText = activeQuestions.length;
+        
+        startTimer();
+        loadQuestion();
+    }
+
+    // 3. Timer Logic
+    function startTimer() {
+        elapsedSeconds = 0;
+        timerDisplay.innerText = "00:00";
+        timerInterval = setInterval(() => {
+            elapsedSeconds++;
+            let m = Math.floor(elapsedSeconds / 60).toString().padStart(2, '0');
+            let s = (elapsedSeconds % 60).toString().padStart(2, '0');
+            timerDisplay.innerText = `${m}:${s}`;
+        }, 1000);
+    }
+    
+    function stopTimer() { clearInterval(timerInterval); }
+
+    // 4. Render Question
+    function loadQuestion() {
+        const q = activeQuestions[currentQIndex];
+        document.getElementById('current-q-num').innerText = currentQIndex + 1;
+        
+        const qBox = document.getElementById('question-text');
+        qBox.innerHTML = `<span style="color:#7f8c8d; font-size:0.85em;">[${q.subject} > ${q.chapter}]</span><br><br>${q.question}`;
+        
+        const optContainer = document.getElementById('options-container');
+        optContainer.innerHTML = '';
+        
+        // Hide instant feedback initially on load
+        document.getElementById('instant-feedback-container').style.display = 'none';
+        
+        q.options.forEach((optText, index) => {
+            const isChecked = userAnswers[currentQIndex] === index ? 'checked' : '';
+            optContainer.innerHTML += `
+                <label class="option-label" id="label-opt-${index}">
+                    <input type="radio" name="option" value="${index}" ${isChecked} onchange="handleSelection(${index})">
+                    ${optText}
+                </label>
+            `;
+        });
+
+        // Navigation UI logic
+        document.getElementById('prev-btn').disabled = currentQIndex === 0;
+        if (currentQIndex === activeQuestions.length - 1) {
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('submit-btn').style.display = 'block';
+        } else {
+            document.getElementById('next-btn').style.display = 'block';
+            document.getElementById('submit-btn').style.display = 'none';
+        }
+
+        // If in practice mode and already answered, show the static feedback immediately
+        if (quizMode === 'practice' && userAnswers[currentQIndex] !== null) {
+            revealInstantFeedback();
+        }
+
+        renderMath();
+    }
+
+    // Handle user clicking an option
+    function handleSelection(index) {
+        if (quizMode === 'practice') {
+            // In practice mode, lock in the answer once clicked
+            if (userAnswers[currentQIndex] === null) {
+                userAnswers[currentQIndex] = index;
+                revealInstantFeedback();
+            } else {
+                // Prevent changing the radio button if already answered
+                const radios = document.getElementsByName('option');
+                radios[userAnswers[currentQIndex]].checked = true;
+            }
+        } else {
+            // Exam mode: allow changing answers freely
+            userAnswers[currentQIndex] = index;
+        }
+    }
+
+    // Reveal Logic for Practice Mode
+    function revealInstantFeedback() {
+        const q = activeQuestions[currentQIndex];
+        const selectedIndex = userAnswers[currentQIndex];
+        const correctIndex = q.answer;
+
+        // Disable all radio buttons to prevent changes
+        const radios = document.getElementsByName('option');
+        radios.forEach((radio, idx) => {
+            radio.disabled = true;
+            const label = document.getElementById(`label-opt-${idx}`);
+            label.classList.add('disabled');
+            
+            // Highlight styling
+            if (idx === correctIndex) {
+                label.classList.add('correct-instant');
+            } else if (idx === selectedIndex && selectedIndex !== correctIndex) {
+                label.classList.add('incorrect-instant');
+            }
+        });
+
+        // Show Explanation Box
+        const feedbackContainer = document.getElementById('instant-feedback-container');
+        feedbackContainer.style.display = 'block';
+        
+        let expHtml = q.explanation ? q.explanation.replace(/\n/g, '<br>') : "No explanation provided.";
+        feedbackContainer.innerHTML = `
+            <div class="explanation-box">
+                <span class="${selectedIndex === correctIndex ? 'answer-correct' : 'answer-incorrect'}">
+                    ${selectedIndex === correctIndex ? 'Correct!' : 'Incorrect.'}
+                </span><br><br>
+                ${expHtml}
+            </div>
+        `;
+        renderMath();
+    }
+
+    function nextQuestion() {
+        if (currentQIndex < activeQuestions.length - 1) { currentQIndex++; loadQuestion(); }
+    }
+
+    function prevQuestion() {
+        if (currentQIndex > 0) { currentQIndex--; loadQuestion(); }
+    }
+
+    // 5. Submit and Show Detailed Results
+    function submitQuiz() {
+        if (userAnswers.includes(null)) {
+            if (!confirm("You have unanswered questions. Are you sure you want to submit?")) return;
+        }
+
+        stopTimer();
+        quizSection.classList.remove('active');
+        resultSection.classList.add('active');
+        
+        let score = 0;
+        let reviewHTML = '';
+
+        activeQuestions.forEach((q, i) => {
+            const userAnswer = userAnswers[i];
+            const isCorrect = userAnswer === q.answer;
+            const isUnanswered = userAnswer === null;
+            
+            if (isCorrect) score++;
+
+            let statusClass = isCorrect ? 'correct' : (isUnanswered ? 'unanswered' : 'incorrect');
+            let expHtml = q.explanation ? `<div class="explanation-box">${q.explanation.replace(/\n/g, '<br>')}</div>` : '';
+
+            reviewHTML += `
+                <div class="result-item ${statusClass}">
+                    <p style="color:#7f8c8d; font-size:0.85em; margin-bottom:5px;">[${q.subject} > ${q.chapter}]</p>
+                    <p><strong>Q${i+1}:</strong> ${q.question}</p>
+                    <p>
+                        Your Answer: <span class="${isCorrect ? 'answer-correct' : 'answer-incorrect'}">
+                            ${isUnanswered ? 'None' : q.options[userAnswer]}
+                        </span>
+                    </p>
+                    ${!isCorrect ? `<p>Correct Answer: <span class="answer-correct">${q.options[q.answer]}</span></p>` : ''}
+                    
+                    ${expHtml}
+                </div>
+            `;
+        });
+
+        document.getElementById('score-display').innerText = `Score: ${score} / ${activeQuestions.length}`;
+        
+        // Display final time
+        let m = Math.floor(elapsedSeconds / 60).toString().padStart(2, '0');
+        let s = (elapsedSeconds % 60).toString().padStart(2, '0');
+        document.getElementById('final-time-display').innerText = `Time Taken: ${m} minutes and ${s} seconds`;
+        
+        document.getElementById('review-container').innerHTML = reviewHTML;
+        
+        renderMath();
+    }
+
+    function renderMath() {
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            MathJax.typesetPromise().catch((err) => console.log('MathJax error:', err));
+        }
+    }
+</script>
+</body>
+</html>
