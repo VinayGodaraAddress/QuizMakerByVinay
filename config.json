@@ -1,0 +1,12 @@
+{
+  "Mathematics": {
+    "Calculus": "math/calculus.json",
+    "Algebra": "math/algebra.json"
+  },
+  "Physics": {
+    "Kinematics": "physics/kinematics.json"
+  },
+  "English": {
+    "Grammar": "english/grammar.json"
+  }
+}
