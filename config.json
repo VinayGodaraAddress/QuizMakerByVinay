@@ -7,7 +7,7 @@
     "Kinematics": "physics/kinematics.json"
   },
   "Haryana_Gk": {
-    "1 Ambala": "haryana_gk/Ambala.json",
-    "2 Karnal": "haryana_gk/Karnal.json"
+    "1.1 Ambala": "haryana_gk/Ambala.json",
+    "2.1 Karnal": "haryana_gk/Karnal.json"
   }
 }
