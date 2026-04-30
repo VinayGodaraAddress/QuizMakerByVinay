@@ -1,7 +1,7 @@
 {
   "Mathematics": {
     "Calculus": "math/calculus.json",
-    "Algebra": "math/algebra.json"
+    "1. Number System": "math/numbersystem.json"
   },
   "Physics": {
     "Kinematics": "physics/kinematics.json"
