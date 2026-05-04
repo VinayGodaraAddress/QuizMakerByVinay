@@ -110,6 +110,14 @@
         .stat-value { font-size: 1.8em; font-weight: bold; color: var(--primary); }
         .stat-label { font-size: 0.85em; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px;}
 
+        /* Chapter Progress Bars */
+        .progress-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
+        .progress-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; }
+        .progress-title { width: 35%; font-weight: bold; font-size: 0.9em; color: var(--primary); }
+        .progress-bar-bg { background: #ecf0f1; border-radius: 10px; height: 12px; flex-grow: 1; margin: 0 15px; overflow: hidden; }
+        .progress-bar-fill { background: var(--success); height: 100%; border-radius: 10px; transition: width 0.5s ease; }
+        .progress-stats { width: 25%; text-align: right; font-size: 0.85em; color: #7f8c8d; }
+
         .history-list { display: flex; flex-direction: column; gap: 15px; }
         .history-card { 
             border: 1px solid #ecf0f1; border-left: 5px solid var(--secondary);
@@ -128,7 +136,6 @@
         .timer-container { display: flex; align-items: center; gap: 10px; }
         .timer { font-size: 1.2em; font-weight: bold; color: var(--danger); background: #fadbd8; padding: 5px 15px; border-radius: 20px;}
         
-        /* Handle Markdown images and overflow */
         .question-box { margin-bottom: 20px; font-size: 1.2em; overflow-x: auto; overflow-wrap: break-word;}
         .question-box img, .explanation-box img { max-width: 100%; height: auto; border-radius: 4px; margin-top: 10px; }
         
@@ -142,11 +149,9 @@
         .markdown-inline-wrapper { display: inline-block; vertical-align: middle; }
         .markdown-inline-wrapper p { margin: 0; }
         
-        /* Fixed Navigation Buttons */
         .nav-buttons { display: flex; gap: 10px; margin-top: 30px; width: 100%; justify-content: space-between;}
         .nav-buttons button { flex: 1; }
 
-        /* Results & Explanations Styles */
         .result-item { padding: 20px; margin-bottom: 20px; border-radius: 4px; border-left: 6px solid; background: #fdfdfd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow-x: auto;}
         .result-item.correct { border-left-color: var(--success); }
         .result-item.incorrect { border-left-color: var(--danger); }
@@ -156,7 +161,6 @@
         .score-display { font-size: 1.8em; font-weight: bold; text-align: center; margin-bottom: 5px; color: var(--primary);}
         .time-display { font-size: 1.2em; text-align: center; margin-bottom: 30px; color: #7f8c8d;}
         
-        /* Markdown removes top margin of first element usually, this keeps it neat */
         .explanation-box { margin-top: 15px; padding: 15px; background-color: #eaf2f8; border-left: 4px solid var(--secondary); border-radius: 0 4px 4px 0; font-size: 0.95em; overflow-x: auto; overflow-wrap: break-word; }
         .explanation-box p:first-child { margin-top: 0; }
         .explanation-box p:last-child { margin-bottom: 0; }
@@ -168,6 +172,12 @@
             .container { padding: 40px; margin: 40px auto; }
             button { width: auto; }
             .navbar { padding: 15px 40px; }
+            .progress-item { flex-direction: row; }
+        }
+        @media (max-width: 599px) {
+            .progress-item { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .progress-title, .progress-stats { width: 100%; text-align: left; }
+            .progress-bar-bg { width: 100%; margin: 0; }
         }
     </style>
 </head>
@@ -190,6 +200,13 @@
             <div class="sound-toggle-container">
                 <input type="checkbox" id="sound-toggle" checked>
                 <label for="sound-toggle" style="margin:0; cursor:pointer;">Enable Selection Sound Effects</label>
+            </div>
+
+            <div class="form-group">
+                <label style="display: flex; align-items: center; cursor: pointer; font-weight: normal; background: #eaf2f8; padding: 10px 15px; border-radius: 4px; border: 1px solid #bce0fd;">
+                    <input type="checkbox" id="exclude-correct" style="width: auto; margin-right: 15px; transform: scale(1.4);" onchange="updateQuestionCount()">
+                    <strong>Exclude previously answered correct questions</strong>
+                </label>
             </div>
 
             <div class="form-group">
@@ -238,6 +255,10 @@
             </div>
         </div>
 
+        <div style="text-align: right; margin-bottom: 15px;">
+            <button onclick="resetProgress()" style="background-color: var(--danger); width: auto; padding: 8px 15px; font-size: 0.9em; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Reset All Progress</button>
+        </div>
+
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-value" id="stat-total-quizzes">0</div>
@@ -253,9 +274,11 @@
             </div>
         </div>
 
+        <h2>Chapter Progress</h2>
+        <div id="chapter-progress-container" class="progress-list"></div>
+
         <h2>Quiz History</h2>
-        <div id="history-container" class="history-list">
-            </div>
+        <div id="history-container" class="history-list"></div>
     </div>
 
     <div id="quiz-section" class="section">
@@ -301,8 +324,13 @@
     let elapsedSeconds = 0;
     let audioCtx; 
 
-    // Profile Data
-    let userProfile = { name: "", history: [] };
+    // Profile Data (Updated with chapter progress & correct answers tracking)
+    let userProfile = { 
+        name: "", 
+        history: [],
+        chapterProgress: {},
+        correctlyAnswered: [] 
+    };
 
     const statusMsg = document.getElementById('status-msg');
     const timerDisplay = document.getElementById('timer-display');
@@ -321,7 +349,7 @@
         } catch (e) {
             console.error("Markdown parsing failed, falling back to raw text.", e);
         }
-        return text; // Fallback to raw text if marked fails to load or crashes
+        return text; 
     }
 
     // 1. Initialization
@@ -355,7 +383,11 @@
     function loadProfileData() {
         const saved = localStorage.getItem('mcq_user_profile');
         if (saved) {
-            userProfile = JSON.parse(saved);
+            const parsed = JSON.parse(saved);
+            userProfile.name = parsed.name || "";
+            userProfile.history = parsed.history || [];
+            userProfile.chapterProgress = parsed.chapterProgress || {};
+            userProfile.correctlyAnswered = parsed.correctlyAnswered || [];
         }
     }
 
@@ -382,6 +414,17 @@
         renderProfileDashboard();
     }
 
+    function resetProgress() {
+        if(confirm("Are you sure you want to reset all quiz progress, history, and chapter stats? Your name will be kept.")) {
+            userProfile.history = [];
+            userProfile.chapterProgress = {};
+            userProfile.correctlyAnswered = [];
+            saveProfileData();
+            renderProfileDashboard();
+            updateQuestionCount(); // Recalculate available pool if they go back to setup
+        }
+    }
+
     function renderProfileDashboard() {
         document.getElementById('greeting-text').innerText = userProfile.name ? `${userProfile.name}'s Profile` : `My Profile`;
 
@@ -390,6 +433,7 @@
         let totalCorrect = 0;
         let historyHtml = '';
 
+        // Render History
         if (totalQuizzes === 0) {
             historyHtml = `<p style="text-align:center; color:#7f8c8d;">You haven't taken any quizzes yet!</p>`;
         } else {
@@ -420,6 +464,34 @@
         document.getElementById('stat-total-questions').innerText = totalQuestions;
         document.getElementById('stat-accuracy').innerText = `${avgAccuracy}%`;
         document.getElementById('history-container').innerHTML = historyHtml;
+
+        // Render Chapter Progress
+        let progressHtml = '';
+        const chapterKeys = Object.keys(userProfile.chapterProgress);
+        
+        if (chapterKeys.length === 0) {
+            progressHtml = `<p style="text-align:center; color:#7f8c8d;">Complete quizzes to see chapter breakdown!</p>`;
+        } else {
+            // Sort chapters alphabetically
+            chapterKeys.sort().forEach(key => {
+                const stats = userProfile.chapterProgress[key];
+                const acc = Math.round((stats.correct / stats.attempted) * 100);
+                const [subj, chap] = key.split('|');
+                
+                progressHtml += `
+                    <div class="progress-item">
+                        <div class="progress-title">${subj} > ${chap}</div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width: ${acc}%;"></div>
+                        </div>
+                        <div class="progress-stats">
+                            <strong>${acc}%</strong> (${stats.correct}/${stats.attempted})
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        document.getElementById('chapter-progress-container').innerHTML = progressHtml;
     }
 
     // 4. Input Validation Logic
@@ -476,6 +548,7 @@
     async function updateQuestionCount() {
         const selectedSubjects = Array.from(document.querySelectorAll('.subject-cb:checked')).map(cb => cb.value);
         const selectedChapterValues = Array.from(document.querySelectorAll('.chapter-cb:checked')).map(cb => cb.value);
+        const excludeCorrect = document.getElementById('exclude-correct').checked;
 
         if (selectedSubjects.length === 0) {
             totalAvailable = 0;
@@ -508,7 +581,15 @@
                     fileCache[item.filePath] = [];
                 }
             }
-            poolCount += fileCache[item.filePath].length;
+            
+            let fileData = fileCache[item.filePath];
+            if (excludeCorrect) {
+                fileData = fileData.filter(q => {
+                    const qId = `${q.subject}|${q.chapter}|${q.question}`;
+                    return !userProfile.correctlyAnswered.includes(qId);
+                });
+            }
+            poolCount += fileData.length;
         }
 
         totalAvailable = poolCount;
@@ -540,6 +621,7 @@
 
         const selectedSubjects = Array.from(document.querySelectorAll('.subject-cb:checked')).map(cb => cb.value);
         const selectedChapterValues = Array.from(document.querySelectorAll('.chapter-cb:checked')).map(cb => cb.value);
+        const excludeCorrect = document.getElementById('exclude-correct').checked;
         quizMode = document.getElementById('quiz-mode').value;
 
         if (document.getElementById('sound-toggle').checked && !audioCtx) {
@@ -551,7 +633,16 @@
             const subjectChapters = appConfig[subject];
             for (const [chapter, filePath] of Object.entries(subjectChapters)) {
                 if (selectedChapterValues.length === 0 || selectedChapterValues.includes(`${subject}|${chapter}`)) {
-                    if (fileCache[filePath]) combinedPool.push(...fileCache[filePath]);
+                    if (fileCache[filePath]) {
+                        let fileData = fileCache[filePath];
+                        if (excludeCorrect) {
+                            fileData = fileData.filter(q => {
+                                const qId = `${q.subject}|${q.chapter}|${q.question}`;
+                                return !userProfile.correctlyAnswered.includes(qId);
+                            });
+                        }
+                        combinedPool.push(...fileData);
+                    }
                 }
             }
         });
@@ -565,7 +656,7 @@
         userAnswers = new Array(activeQuestions.length).fill(null);
         currentQIndex = 0;
 
-        mainNavbar.style.display = 'none'; // Hide navbar
+        mainNavbar.style.display = 'none'; 
         navigate('quiz-section');
         document.getElementById('total-q-num').innerText = activeQuestions.length;
         
@@ -575,7 +666,7 @@
 
     function cancelQuiz() {
         stopTimer();
-        mainNavbar.style.display = 'flex'; // Restore navbar
+        mainNavbar.style.display = 'flex'; 
         navigate('setup-section');
     }
 
@@ -598,7 +689,6 @@
         
         const qBox = document.getElementById('question-text');
         
-        // Render markdown safely
         qBox.innerHTML = `<span style="color:#7f8c8d; font-size:0.85em; font-weight:bold; display:block; margin-bottom:10px;">[${q.subject} > ${q.chapter}]</span>${renderMarkdown(q.question)}`;
         
         const optContainer = document.getElementById('options-container');
@@ -677,7 +767,7 @@
     // 8. Submit, Save History, and Show Results
     function submitQuiz() {
         stopTimer();
-        mainNavbar.style.display = 'flex'; // Restore navbar
+        mainNavbar.style.display = 'flex'; 
         navigate('result-section');
         
         let score = 0, wrongCount = 0, unansweredCount = 0;
@@ -685,12 +775,29 @@
         let coveredTopics = new Set();
 
         activeQuestions.forEach((q, i) => {
+            const chapterKey = `${q.subject}|${q.chapter}`;
             coveredTopics.add(`${q.subject} (${q.chapter})`);
+            
             const userAnswer = userAnswers[i];
             const isCorrect = userAnswer === q.answer;
             const isUnanswered = userAnswer === null;
+
+            // Track Chapter Progress
+            if (!userProfile.chapterProgress[chapterKey]) {
+                userProfile.chapterProgress[chapterKey] = { attempted: 0, correct: 0 };
+            }
+            userProfile.chapterProgress[chapterKey].attempted++;
             
-            if (isCorrect) score++;
+            if (isCorrect) {
+                score++;
+                userProfile.chapterProgress[chapterKey].correct++;
+                
+                // Track Unique Correct Answer Hash (Subject | Chapter | Exact Question Text)
+                const qId = `${q.subject}|${q.chapter}|${q.question}`;
+                if (!userProfile.correctlyAnswered.includes(qId)) {
+                    userProfile.correctlyAnswered.push(qId);
+                }
+            }
             else if (isUnanswered) unansweredCount++;
             else wrongCount++;
 
@@ -728,7 +835,8 @@
             topics: Array.from(coveredTopics).join(', ')
         });
         saveProfileData();
-
+        updateQuestionCount(); // Refresh question pool limits in background for the next quiz 
+        
         renderMath();
     }
 
