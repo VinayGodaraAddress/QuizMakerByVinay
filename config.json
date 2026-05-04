@@ -3,7 +3,27 @@
     "1. Number System": "math/numbersystem.json"
   },
   "Haryana Gk": {
-    "1.1 Ambala": "haryana_gk/Ambala.json",
-    "2.1 Karnal": "haryana_gk/Karnal.json"
-  }
+  "1. Ambala": "haryana_gk/Ambala.json",
+  "2. Karnal": "haryana_gk/Karnal.json",
+  "3. Rohtak": "haryana_gk/Rohtak.json",
+  "4. Hisar": "haryana_gk/Hisar.json",
+  "5. Jind": "haryana_gk/Jind.json",
+  "6. Gurugram": "haryana_gk/Gurugram.json",
+  "7. Mahendragarh": "haryana_gk/Mahendragarh.json",
+  "8. Bhiwani": "haryana_gk/Bhiwani.json",
+  "9. Sonipat": "haryana_gk/Sonipat.json",
+  "10. Kurukshetra": "haryana_gk/Kurukshetra.json",
+  "11. Sirsa": "haryana_gk/Sirsa.json",
+  "12. Faridabad": "haryana_gk/Faridabad.json",
+  "13. Panipat": "haryana_gk/Panipat.json",
+  "14. Kaithal": "haryana_gk/Kaithal.json",
+  "15. Rewari": "haryana_gk/Rewari.json",
+  "16. Yamunanagar": "haryana_gk/Yamunanagar.json",
+  "17. Panchkula": "haryana_gk/Panchkula.json",
+  "18. Jhajjar": "haryana_gk/Jhajjar.json",
+  "19. Fatehabad": "haryana_gk/Fatehabad.json",
+  "20. Nuh": "haryana_gk/Nuh.json",
+  "21. Palwal": "haryana_gk/Palwal.json",
+  "22. Charkhi Dadri": "haryana_gk/Charkhi_Dadri.json"
+}
 }
