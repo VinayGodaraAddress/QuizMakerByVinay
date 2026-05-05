@@ -74,7 +74,7 @@
 
         .checkbox-group {
             display: flex; flex-direction: column; gap: 10px;
-            max-height: 200px; overflow-y: auto; border: 1px solid #bdc3c7; 
+            max-height: 250px; overflow-y: auto; border: 1px solid #bdc3c7; 
             padding: 12px; border-radius: 4px; background: #fafafa;
         }
         .checkbox-group label {
@@ -110,6 +110,25 @@
         .stat-card { background: #eaf2f8; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #bce0fd;}
         .stat-value { font-size: 1.8em; font-weight: bold; color: var(--primary); }
         .stat-label { font-size: 0.85em; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px;}
+
+        /* Accuracy Heatmap Styles */
+        .heatmap-container { display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0;}
+        .heatmap-subject { font-weight: bold; margin-bottom: 5px; color: var(--primary); border-bottom: 1px solid #ddd; padding-bottom: 5px;}
+        .heatmap-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;}
+        .heat-box { 
+            padding: 10px; border-radius: 6px; color: white; font-size: 0.9em; 
+            font-weight: bold; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; min-width: 80px; 
+            text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.2s;
+            cursor: default;
+        }
+        .heat-box:hover { transform: scale(1.05); }
+        .heat-0-30 { background-color: var(--danger); } 
+        .heat-30-50 { background-color: #e67e22; } 
+        .heat-50-70 { background-color: #f1c40f; color: #333;} 
+        .heat-70-90 { background-color: var(--success); opacity: 0.85;} 
+        .heat-90-100 { background-color: var(--success); } 
+        .heat-box span { font-size: 0.75em; font-weight: normal; margin-top: 5px; opacity: 0.9; max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
 
         /* Chapter Progress Bars */
         .progress-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
@@ -228,6 +247,18 @@
             </div>
 
             <div class="form-group">
+                <label for="mix-mode">Question Distribution:</label>
+                <select id="mix-mode" onchange="renderCustomMixUI(); validateQuestionCount();">
+                    <option value="auto">Auto (Shuffle all selected)</option>
+                    <option value="custom">Custom Mix (Specify ratio per chapter)</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="custom-mix-container" style="display:none;">
+                <!-- Dynamically populated input fields for chapters -->
+            </div>
+
+            <div class="form-group">
                 <label for="quiz-mode">Quiz Mode:</label>
                 <select id="quiz-mode">
                     <option value="exam">Exam Mode (Show answers at the end)</option>
@@ -236,8 +267,8 @@
             </div>
 
             <div class="form-group">
-                <label for="num-questions">Number of Questions:</label>
-                <input type="number" id="num-questions" min="1" value="20" oninput="validateQuestionCount()">
+                <label for="num-questions">Total Number of Questions:</label>
+                <input type="number" id="num-questions" min="1" oninput="userEditedNum = true; validateQuestionCount()">
                 <div class="help-text" id="available-count-msg" style="color:var(--secondary);">Available questions: 0</div>
                 <div class="warning-msg" id="question-warning">⚠ You are asking for more questions than are available!</div>
             </div>
@@ -279,7 +310,11 @@
             </div>
         </div>
 
-        <h2>Chapter Progress</h2>
+        <h2>Accuracy Heatmap</h2>
+        <div class="help-text" style="margin-bottom: 10px;">Visual breakdown of your performance by chapter. Hover/Tap for details.</div>
+        <div id="accuracy-heatmap-container"></div>
+
+        <h2>Chapter Progress Logs</h2>
         <div id="chapter-progress-container" class="progress-list"></div>
 
         <h2>Ignored Questions</h2>
@@ -328,12 +363,14 @@
 <script>
     let appConfig = {};
     let fileCache = {}; 
+    let availablePerChapter = {}; // Holds specific available question data per chapter key
     let totalAvailable = 0;
     
     let activeQuestions = [];
     let currentQIndex = 0;
     let userAnswers = []; 
     let quizMode = 'exam';
+    let userEditedNum = false; // Tracks if user manually typed in a total amount
     
     let timerInterval;
     let elapsedSeconds = 0;
@@ -345,7 +382,7 @@
         history: [],
         chapterProgress: {},
         correctlyAnswered: [],
-        notImportant: [] // Added tracking for not important questions
+        notImportant: [] 
     };
 
     const statusMsg = document.getElementById('status-msg');
@@ -482,12 +519,50 @@
         document.getElementById('stat-accuracy').innerText = `${avgAccuracy}%`;
         document.getElementById('history-container').innerHTML = historyHtml;
 
-        // Render Chapter Progress
-        let progressHtml = '';
+        // --- Render Accuracy Heatmap ---
+        let heatmapHtml = '';
         const chapterKeys = Object.keys(userProfile.chapterProgress);
         
         if (chapterKeys.length === 0) {
-            progressHtml = `<p style="text-align:center; color:#7f8c8d;">Complete quizzes to see chapter breakdown!</p>`;
+            heatmapHtml = `<p style="text-align:center; color:#7f8c8d;">Complete quizzes to generate your accuracy heatmap!</p>`;
+        } else {
+            heatmapHtml += `<div class="heatmap-container">`;
+            const subjectsMap = {};
+            
+            // Group by subject
+            chapterKeys.sort().forEach(key => {
+                const [subj, chap] = key.split('|');
+                if(!subjectsMap[subj]) subjectsMap[subj] = [];
+                subjectsMap[subj].push({ chap, stats: userProfile.chapterProgress[key] });
+            });
+
+            for(const [subj, chapters] of Object.entries(subjectsMap)) {
+                heatmapHtml += `<div class="heatmap-subject">${subj}</div><div class="heatmap-row">`;
+                chapters.forEach(c => {
+                    const acc = Math.round((c.stats.correct / c.stats.attempted) * 100);
+                    let colorClass = 'heat-0-30';
+                    if(acc > 30 && acc <= 50) colorClass = 'heat-30-50';
+                    else if(acc > 50 && acc <= 70) colorClass = 'heat-50-70';
+                    else if(acc > 70 && acc <= 90) colorClass = 'heat-70-90';
+                    else if(acc > 90) colorClass = 'heat-90-100';
+
+                    heatmapHtml += `
+                        <div class="heat-box ${colorClass}" title="${subj} > ${c.chap}&#10;Score: ${c.stats.correct}/${c.stats.attempted}">
+                            ${acc}%
+                            <span title="${c.chap}">${c.chap}</span>
+                        </div>
+                    `;
+                });
+                heatmapHtml += `</div>`;
+            }
+            heatmapHtml += `</div>`;
+        }
+        document.getElementById('accuracy-heatmap-container').innerHTML = heatmapHtml;
+
+        // Render Chapter Progress List
+        let progressHtml = '';
+        if (chapterKeys.length === 0) {
+            progressHtml = `<p style="text-align:center; color:#7f8c8d;">Complete quizzes to see chapter breakdown logs!</p>`;
         } else {
             chapterKeys.sort().forEach(key => {
                 const stats = userProfile.chapterProgress[key];
@@ -543,10 +618,22 @@
 
     // 4. Input Validation Logic
     function validateQuestionCount() {
-        const requestedNum = parseInt(numInput.value) || 0;
+        const mixMode = document.getElementById('mix-mode').value;
+        let requestedNum = parseInt(numInput.value) || 0;
         
+        if (mixMode === 'custom') {
+            // Check if sum is 0
+            if (requestedNum <= 0) {
+                warningMsg.innerText = "⚠ Please set a valid mix ratio > 0.";
+                warningMsg.style.display = 'block';
+                startBtn.disabled = true;
+                return;
+            }
+        }
+
         if (totalAvailable > 0 && requestedNum > totalAvailable) {
             numInput.classList.add('input-error');
+            warningMsg.innerText = "⚠ You are asking for more questions than are available!";
             warningMsg.style.display = 'block';
             startBtn.disabled = true;
         } else if (requestedNum <= 0 || totalAvailable === 0) {
@@ -599,7 +686,9 @@
 
         if (selectedSubjects.length === 0) {
             totalAvailable = 0;
+            availablePerChapter = {};
             document.getElementById('available-count-msg').innerText = `Available questions: 0`;
+            renderCustomMixUI();
             validateQuestionCount();
             return;
         }
@@ -618,6 +707,8 @@
         });
 
         let poolCount = 0;
+        availablePerChapter = {}; 
+
         for (let item of filesToFetch) {
             if (!fileCache[item.filePath]) {
                 try {
@@ -631,6 +722,7 @@
             
             let fileData = fileCache[item.filePath];
             
+            // Apply Exclusions
             fileData = fileData.filter(q => {
                 const qId = `${q.subject}|${q.chapter}|${q.question}`;
                 const isIgnored = userProfile.notImportant.includes(qId);
@@ -638,11 +730,91 @@
                 return !isIgnored && !isAnsweredCorrectly;
             });
             
+            const key = `${item.subject}|${item.chapter}`;
+            availablePerChapter[key] = {
+                subject: item.subject,
+                chapter: item.chapter,
+                count: fileData.length,
+                data: fileData
+            };
+            
             poolCount += fileData.length;
         }
 
         totalAvailable = poolCount;
         document.getElementById('available-count-msg').innerText = `Available questions: ${totalAvailable}`;
+        
+        // Handle Default "20" shifting
+        if (document.getElementById('mix-mode').value === 'auto') {
+            if (!userEditedNum) {
+                numInput.value = Math.min(20, totalAvailable);
+            } else if (parseInt(numInput.value) > totalAvailable) {
+                numInput.value = totalAvailable; // Clamp down if manually typed value exceeds new total
+            }
+        }
+
+        renderCustomMixUI();
+        validateQuestionCount();
+    }
+
+    // Renders the mix & match dynamic inputs
+    function renderCustomMixUI() {
+        const container = document.getElementById('custom-mix-container');
+        const mixMode = document.getElementById('mix-mode').value;
+        
+        if (mixMode !== 'custom') {
+            container.style.display = 'none';
+            container.classList.remove('checkbox-group');
+            numInput.readOnly = false;
+            
+            // Reapply auto defaults if they switch back to auto
+            if(!userEditedNum) numInput.value = Math.min(20, totalAvailable);
+            else if(parseInt(numInput.value) > totalAvailable) numInput.value = totalAvailable;
+            
+            return;
+        }
+        
+        container.style.display = 'flex';
+        container.classList.add('checkbox-group');
+        numInput.readOnly = true; // Auto-summed from the fields
+        
+        let html = '';
+        for (const [key, info] of Object.entries(availablePerChapter)) {
+            if(info.count > 0) {
+                html += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 0;">
+                        <span style="font-size:0.9em;">
+                            <strong>${info.subject}</strong> > ${info.chapter} 
+                            <span style="color:var(--secondary); font-size: 0.85em;">(Max: ${info.count})</span>
+                        </span>
+                        <input type="number" class="custom-mix-input" data-chapter="${key}" min="0" max="${info.count}" value="0" style="width:80px; padding:8px; text-align:center;" oninput="updateTotalFromCustom(this)">
+                    </div>
+                `;
+            }
+        }
+        
+        if(html === '') {
+            html = '<div class="help-text" style="text-align:center;">Select subjects and chapters above to start mixing.</div>';
+        }
+        
+        container.innerHTML = html;
+        updateTotalFromCustom(); 
+    }
+
+    function updateTotalFromCustom(changedInput) {
+        if(changedInput) {
+            let max = parseInt(changedInput.max) || 0;
+            let val = parseInt(changedInput.value) || 0;
+            if(val > max) changedInput.value = max;
+            if(val < 0) changedInput.value = 0;
+        }
+        
+        let total = 0;
+        document.querySelectorAll('.custom-mix-input').forEach(input => {
+            total += parseInt(input.value) || 0;
+        });
+        
+        numInput.value = total;
         validateQuestionCount();
     }
 
@@ -666,44 +838,53 @@
     // 6. Start Quiz
     function startQuiz() {
         const requestedNum = parseInt(numInput.value);
-        if (totalAvailable === 0 || requestedNum > totalAvailable || requestedNum <= 0) return;
+        if (totalAvailable === 0 || requestedNum <= 0) return;
 
-        const selectedSubjects = Array.from(document.querySelectorAll('.subject-cb:checked')).map(cb => cb.value);
-        const selectedChapterValues = Array.from(document.querySelectorAll('.chapter-cb:checked')).map(cb => cb.value);
-        const excludeCorrect = document.getElementById('exclude-correct').checked;
         quizMode = document.getElementById('quiz-mode').value;
+        const mixMode = document.getElementById('mix-mode').value;
 
         if (document.getElementById('sound-toggle').checked && !audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
 
         let combinedPool = [];
-        selectedSubjects.forEach(subject => {
-            const subjectChapters = appConfig[subject];
-            for (const [chapter, filePath] of Object.entries(subjectChapters)) {
-                if (selectedChapterValues.length === 0 || selectedChapterValues.includes(`${subject}|${chapter}`)) {
-                    if (fileCache[filePath]) {
-                        let fileData = fileCache[filePath];
-                        
-                        fileData = fileData.filter(q => {
-                            const qId = `${q.subject}|${q.chapter}|${q.question}`;
-                            const isIgnored = userProfile.notImportant.includes(qId);
-                            const isAnsweredCorrectly = excludeCorrect && userProfile.correctlyAnswered.includes(qId);
-                            return !isIgnored && !isAnsweredCorrectly;
-                        });
-                        
-                        combinedPool.push(...fileData);
-                    }
-                }
-            }
-        });
 
-        for (let i = combinedPool.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [combinedPool[i], combinedPool[j]] = [combinedPool[j], combinedPool[i]];
+        if (mixMode === 'custom') {
+            document.querySelectorAll('.custom-mix-input').forEach(input => {
+                const count = parseInt(input.value) || 0;
+                const key = input.getAttribute('data-chapter');
+                if (count > 0 && availablePerChapter[key]) {
+                    let pool = [...availablePerChapter[key].data];
+                    // Shuffle this specific chapter's pool
+                    for (let i = pool.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [pool[i], pool[j]] = [pool[j], pool[i]];
+                    }
+                    combinedPool.push(...pool.slice(0, count));
+                }
+            });
+            // Final Shuffle of mixed chapters
+            for (let i = combinedPool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [combinedPool[i], combinedPool[j]] = [combinedPool[j], combinedPool[i]];
+            }
+
+        } else {
+            // Auto Mode
+            for (const key in availablePerChapter) {
+                combinedPool.push(...availablePerChapter[key].data);
+            }
+            // Shuffle
+            for (let i = combinedPool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [combinedPool[i], combinedPool[j]] = [combinedPool[j], combinedPool[i]];
+            }
+            combinedPool = combinedPool.slice(0, requestedNum);
         }
 
-        activeQuestions = combinedPool.slice(0, requestedNum);
+        if (combinedPool.length === 0) return;
+
+        activeQuestions = combinedPool;
         userAnswers = new Array(activeQuestions.length).fill(null);
         currentQIndex = 0;
 
@@ -735,7 +916,7 @@
 
     // 7. Render Question
     function loadQuestion() {
-        if(activeQuestions.length === 0) return; // Failsafe
+        if(activeQuestions.length === 0) return; 
         
         const q = activeQuestions[currentQIndex];
         document.getElementById('current-q-num').innerText = currentQIndex + 1;
@@ -827,7 +1008,6 @@
                 saveProfileData();
             }
 
-            // Remove from current arrays
             activeQuestions.splice(currentQIndex, 1);
             userAnswers.splice(currentQIndex, 1);
             
@@ -902,7 +1082,7 @@
                     ${expHtml}
                 </div>`;
                 
-            if (isIncorrect = !isCorrect && !isUnanswered) {
+            if (!isCorrect && !isUnanswered) {
                 incorrectHTML += itemHTML;
             } else if (isUnanswered) {
                 unansweredHTML += itemHTML;
