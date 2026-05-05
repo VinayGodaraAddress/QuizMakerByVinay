@@ -207,6 +207,13 @@
 </head>
 <body>
 
+<div id="global-loading-screen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease;">
+    <div class="spinner" style="width: 50px; height: 50px; border: 5px solid #bdc3c7; border-top: 5px solid var(--secondary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+    <h2 style="color: var(--primary); margin-bottom: 10px; font-size: 2em;">MCQ Mastery</h2>
+    <div id="global-loading-text" style="color: #7f8c8d; font-weight: bold; font-size: 1.1em;">Loading configuration...</div>
+    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+</div>
+
 <div class="navbar" id="main-navbar">
     <h2>MCQ Mastery</h2>
     <div class="nav-buttons-top">
@@ -218,7 +225,7 @@
 <div class="container">
     <div id="setup-section" class="section active">
         <h1>Quiz Setup</h1>
-        <div id="status-msg">Loading configuration...</div>
+        <div id="status-msg" style="display:none;"></div>
         
         <div id="setup-form" style="display:none;">
             <div class="sound-toggle-container">
@@ -255,8 +262,7 @@
             </div>
 
             <div class="form-group" id="custom-mix-container" style="display:none;">
-                <!-- Dynamically populated input fields for chapters -->
-            </div>
+                </div>
 
             <div class="form-group">
                 <label for="quiz-mode">Quiz Mode:</label>
@@ -404,19 +410,55 @@
         return text; 
     }
 
-    // 1. Initialization
+    // 1. Initialization (Updated to pre-load all questions)
     window.onload = async () => {
         loadProfileData();
-        
+        const globalLoader = document.getElementById('global-loading-screen');
+        const globalLoadingText = document.getElementById('global-loading-text');
+
         try {
             const response = await fetch('config.json');
             if (!response.ok) throw new Error("Failed to load config.json");
             appConfig = await response.json();
             
-            statusMsg.style.display = 'none';
+            // PRELOAD ALL QUESTIONS
+            globalLoadingText.innerText = "Discovering subjects...";
+            const fetchPromises = [];
+            
+            for (const subject in appConfig) {
+                for (const chapter in appConfig[subject]) {
+                    const filePath = appConfig[subject][chapter];
+                    if (!fileCache[filePath]) {
+                        // Create a promise to fetch and cache immediately
+                        const p = fetch(filePath).then(async (res) => {
+                            globalLoadingText.innerText = `Loading questions for ${subject}...`;
+                            const data = res.ok ? await res.json() : [];
+                            fileCache[filePath] = data.map(q => ({ ...q, subject, chapter }));
+                        }).catch(e => {
+                            fileCache[filePath] = [];
+                            console.error(`Failed to load ${filePath}`, e);
+                        });
+                        fetchPromises.push(p);
+                    }
+                }
+            }
+            
+            globalLoadingText.innerText = "Compiling question banks... almost there!";
+            await Promise.all(fetchPromises);
+            
+            globalLoadingText.innerText = "Ready!";
+            
+            // Hide global loader with a slight fade
+            globalLoader.style.opacity = '0';
+            setTimeout(() => {
+                globalLoader.style.display = 'none';
+            }, 500);
+
             document.getElementById('setup-form').style.display = 'block';
             populateSubjects();
         } catch (error) {
+            globalLoadingText.innerHTML = `<span style="color:red;">Error: ${error.message}. Make sure config.json exists.</span>`;
+            document.querySelector('.spinner').style.display = 'none';
             statusMsg.innerHTML = `<span style="color:red; font-weight:bold;">Error: ${error.message}. Make sure config.json exists.</span>`;
             statusMsg.style.display = 'block';
         }
@@ -693,9 +735,6 @@
             return;
         }
 
-        document.getElementById('available-count-msg').innerText = "Loading questions...";
-        startBtn.disabled = true;
-
         let filesToFetch = [];
         selectedSubjects.forEach(subject => {
             const subjectChapters = appConfig[subject];
@@ -710,6 +749,7 @@
         availablePerChapter = {}; 
 
         for (let item of filesToFetch) {
+            // Because we preloaded everything in window.onload, this will never actually wait for a fetch
             if (!fileCache[item.filePath]) {
                 try {
                     const res = await fetch(item.filePath);
