@@ -24,6 +24,7 @@
             --secondary: #3498db;
             --danger: #e74c3c;
             --success: #27ae60;
+            --warning: #f39c12;
             --bg-color: #ecf0f1;
             --container-bg: #ffffff;
             --text-color: #2c3e50;
@@ -89,7 +90,7 @@
             padding: 14px 24px; font-size: 16px; cursor: pointer;
             border-radius: 4px; transition: background 0.3s; width: 100%; font-weight: bold;
         }
-        button:hover { background-color: #2980b9; }
+        button:hover { filter: brightness(0.9); }
         button:disabled { background-color: #95a5a6; cursor: not-allowed; }
 
         /* Profile Section */
@@ -118,7 +119,7 @@
         .progress-bar-fill { background: var(--success); height: 100%; border-radius: 10px; transition: width 0.5s ease; }
         .progress-stats { width: 25%; text-align: right; font-size: 0.85em; color: #7f8c8d; }
 
-        .history-list { display: flex; flex-direction: column; gap: 15px; }
+        .history-list { display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px;}
         .history-card { 
             border: 1px solid #ecf0f1; border-left: 5px solid var(--secondary);
             padding: 15px; border-radius: 6px; background: #fafafa;
@@ -149,13 +150,13 @@
         .markdown-inline-wrapper { display: inline-block; vertical-align: middle; }
         .markdown-inline-wrapper p { margin: 0; }
         
-        .nav-buttons { display: flex; gap: 10px; margin-top: 30px; width: 100%; justify-content: space-between;}
-        .nav-buttons button { flex: 1; }
+        .nav-buttons { display: flex; gap: 10px; margin-top: 30px; width: 100%; justify-content: space-between; flex-wrap: wrap;}
+        .nav-buttons button { flex: 1; min-width: 100px; }
 
         .result-item { padding: 20px; margin-bottom: 20px; border-radius: 4px; border-left: 6px solid; background: #fdfdfd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow-x: auto;}
         .result-item.correct { border-left-color: var(--success); }
         .result-item.incorrect { border-left-color: var(--danger); }
-        .result-item.unanswered { border-left-color: #f39c12; }
+        .result-item.unanswered { border-left-color: var(--warning); }
         .answer-correct { color: var(--success); font-weight: bold; }
         .answer-incorrect { color: var(--danger); font-weight: bold; }
         .score-display { font-size: 1.8em; font-weight: bold; text-align: center; margin-bottom: 5px; color: var(--primary);}
@@ -168,6 +169,10 @@
         .sound-toggle-container { display: flex; align-items: center; background: #eaf2f8; padding: 10px 15px; border-radius: 4px; margin-bottom: 20px; font-weight: bold; border: 1px solid #bce0fd; }
         .sound-toggle-container input[type="checkbox"] { transform: scale(1.4); margin-right: 15px; cursor: pointer;}
         
+        /* Result Nav Buttons */
+        .result-nav { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; }
+        .result-nav button { flex: 1; min-width: 150px; }
+
         @media (min-width: 600px) {
             .container { padding: 40px; margin: 40px auto; }
             button { width: auto; }
@@ -277,6 +282,10 @@
         <h2>Chapter Progress</h2>
         <div id="chapter-progress-container" class="progress-list"></div>
 
+        <h2>Ignored Questions</h2>
+        <div class="help-text" style="margin-bottom: 15px;">Questions marked as 'Not Important' won't appear in your future quizzes.</div>
+        <div id="ignored-list" class="history-list"></div>
+
         <h2>Quiz History</h2>
         <div id="history-container" class="history-list"></div>
     </div>
@@ -296,6 +305,7 @@
         
         <div class="nav-buttons">
             <button id="prev-btn" onclick="prevQuestion()" disabled style="background-color: #95a5a6;">Previous</button>
+            <button id="ignore-btn" onclick="markNotImportant()" style="background-color: var(--warning);" title="Remove from quiz and mark as not important">Not Important</button>
             <button id="next-btn" onclick="nextQuestion()">Next</button>
             <button id="submit-btn" onclick="submitQuiz()" style="display:none; background-color: var(--success);">Submit Quiz</button>
         </div>
@@ -305,7 +315,12 @@
         <h1>Detailed Quiz Results</h1>
         <div class="score-display" id="score-display"></div>
         <div class="time-display" id="final-time-display"></div>
-        <button onclick="navigate('setup-section')" style="margin-bottom: 30px; width: 100%;">Take Another Quiz</button>
+        
+        <div class="result-nav">
+            <button onclick="navigate('setup-section')" style="background-color: var(--success);">Take Another Quiz</button>
+            <button onclick="navigate('profile-section')">Go to Stats</button>
+        </div>
+        
         <div id="review-container"></div>
     </div>
 </div>
@@ -324,12 +339,13 @@
     let elapsedSeconds = 0;
     let audioCtx; 
 
-    // Profile Data (Updated with chapter progress & correct answers tracking)
+    // Profile Data
     let userProfile = { 
         name: "", 
         history: [],
         chapterProgress: {},
-        correctlyAnswered: [] 
+        correctlyAnswered: [],
+        notImportant: [] // Added tracking for not important questions
     };
 
     const statusMsg = document.getElementById('status-msg');
@@ -339,7 +355,6 @@
     const startBtn = document.getElementById('start-btn');
     const mainNavbar = document.getElementById('main-navbar');
 
-    // Bulletproof Markdown Renderer
     function renderMarkdown(text, inline = false) {
         if (!text || typeof text !== 'string') return "";
         try {
@@ -388,6 +403,7 @@
             userProfile.history = parsed.history || [];
             userProfile.chapterProgress = parsed.chapterProgress || {};
             userProfile.correctlyAnswered = parsed.correctlyAnswered || [];
+            userProfile.notImportant = parsed.notImportant || [];
         }
     }
 
@@ -419,9 +435,10 @@
             userProfile.history = [];
             userProfile.chapterProgress = {};
             userProfile.correctlyAnswered = [];
+            userProfile.notImportant = [];
             saveProfileData();
             renderProfileDashboard();
-            updateQuestionCount(); // Recalculate available pool if they go back to setup
+            updateQuestionCount(); 
         }
     }
 
@@ -449,7 +466,7 @@
                         <div class="history-details">
                             <span class="history-badge">Score: ${quiz.correct}/${quiz.total} (${acc}%)</span>
                             <span class="history-badge badge-wrong">Wrong: ${quiz.wrong}</span>
-                            <span class="history-badge" style="color:#f39c12;">Unanswered: ${quiz.unanswered}</span>
+                            <span class="history-badge" style="color:var(--warning);">Unanswered: ${quiz.unanswered}</span>
                         </div>
                         <div class="history-topics">
                             <strong>Topics covered:</strong> ${quiz.topics}
@@ -472,7 +489,6 @@
         if (chapterKeys.length === 0) {
             progressHtml = `<p style="text-align:center; color:#7f8c8d;">Complete quizzes to see chapter breakdown!</p>`;
         } else {
-            // Sort chapters alphabetically
             chapterKeys.sort().forEach(key => {
                 const stats = userProfile.chapterProgress[key];
                 const acc = Math.round((stats.correct / stats.attempted) * 100);
@@ -492,6 +508,37 @@
             });
         }
         document.getElementById('chapter-progress-container').innerHTML = progressHtml;
+
+        // Render Ignored Questions
+        let ignoredHtml = '';
+        if(userProfile.notImportant.length === 0) {
+            ignoredHtml = `<p style="text-align:center; color:#7f8c8d;">No ignored questions.</p>`;
+        } else {
+            userProfile.notImportant.forEach(qId => {
+                const parts = qId.split('|');
+                const subject = parts[0];
+                const chapter = parts[1];
+                const text = parts.slice(2).join('|');
+                ignoredHtml += `
+                    <div class="history-card" style="display:flex; justify-content:space-between; align-items:center; border-left-color: var(--warning);">
+                        <div style="flex-grow: 1; padding-right: 15px;">
+                            <div style="font-size:0.85em; color:var(--secondary); font-weight:bold;">[${subject} > ${chapter}]</div>
+                            <div style="font-size:0.9em; margin-top:5px;">${renderMarkdown(text, true)}</div>
+                        </div>
+                        <button onclick="restoreQuestion('${encodeURIComponent(qId)}')" style="background-color:var(--success); width:auto; padding:8px 12px; font-size:12px;">Restore</button>
+                    </div>
+                `;
+            });
+        }
+        document.getElementById('ignored-list').innerHTML = ignoredHtml;
+    }
+
+    function restoreQuestion(encodedId) {
+        const qId = decodeURIComponent(encodedId);
+        userProfile.notImportant = userProfile.notImportant.filter(id => id !== qId);
+        saveProfileData();
+        renderProfileDashboard();
+        updateQuestionCount();
     }
 
     // 4. Input Validation Logic
@@ -583,12 +630,14 @@
             }
             
             let fileData = fileCache[item.filePath];
-            if (excludeCorrect) {
-                fileData = fileData.filter(q => {
-                    const qId = `${q.subject}|${q.chapter}|${q.question}`;
-                    return !userProfile.correctlyAnswered.includes(qId);
-                });
-            }
+            
+            fileData = fileData.filter(q => {
+                const qId = `${q.subject}|${q.chapter}|${q.question}`;
+                const isIgnored = userProfile.notImportant.includes(qId);
+                const isAnsweredCorrectly = excludeCorrect && userProfile.correctlyAnswered.includes(qId);
+                return !isIgnored && !isAnsweredCorrectly;
+            });
+            
             poolCount += fileData.length;
         }
 
@@ -635,12 +684,14 @@
                 if (selectedChapterValues.length === 0 || selectedChapterValues.includes(`${subject}|${chapter}`)) {
                     if (fileCache[filePath]) {
                         let fileData = fileCache[filePath];
-                        if (excludeCorrect) {
-                            fileData = fileData.filter(q => {
-                                const qId = `${q.subject}|${q.chapter}|${q.question}`;
-                                return !userProfile.correctlyAnswered.includes(qId);
-                            });
-                        }
+                        
+                        fileData = fileData.filter(q => {
+                            const qId = `${q.subject}|${q.chapter}|${q.question}`;
+                            const isIgnored = userProfile.notImportant.includes(qId);
+                            const isAnsweredCorrectly = excludeCorrect && userProfile.correctlyAnswered.includes(qId);
+                            return !isIgnored && !isAnsweredCorrectly;
+                        });
+                        
                         combinedPool.push(...fileData);
                     }
                 }
@@ -684,6 +735,8 @@
 
     // 7. Render Question
     function loadQuestion() {
+        if(activeQuestions.length === 0) return; // Failsafe
+        
         const q = activeQuestions[currentQIndex];
         document.getElementById('current-q-num').innerText = currentQIndex + 1;
         
@@ -764,14 +817,50 @@
     function nextQuestion() { if (currentQIndex < activeQuestions.length - 1) { currentQIndex++; loadQuestion(); } }
     function prevQuestion() { if (currentQIndex > 0) { currentQIndex--; loadQuestion(); } }
 
+    function markNotImportant() {
+        if(confirm("Mark this question as 'Not Important'? It will be removed from this quiz and skipped in future quizzes. (You can restore it in your Profile)")) {
+            const q = activeQuestions[currentQIndex];
+            const qId = `${q.subject}|${q.chapter}|${q.question}`;
+            
+            if(!userProfile.notImportant.includes(qId)) {
+                userProfile.notImportant.push(qId);
+                saveProfileData();
+            }
+
+            // Remove from current arrays
+            activeQuestions.splice(currentQIndex, 1);
+            userAnswers.splice(currentQIndex, 1);
+            
+            document.getElementById('total-q-num').innerText = activeQuestions.length;
+
+            if (activeQuestions.length === 0) {
+                submitQuiz(); 
+            } else {
+                if (currentQIndex >= activeQuestions.length) {
+                    currentQIndex = activeQuestions.length - 1;
+                }
+                loadQuestion();
+            }
+        }
+    }
+
     // 8. Submit, Save History, and Show Results
     function submitQuiz() {
         stopTimer();
         mainNavbar.style.display = 'flex'; 
         navigate('result-section');
         
+        if (activeQuestions.length === 0) {
+            document.getElementById('score-display').innerText = `Score: 0 / 0`;
+            document.getElementById('final-time-display').innerText = `No questions were answered.`;
+            document.getElementById('review-container').innerHTML = '';
+            return;
+        }
+
         let score = 0, wrongCount = 0, unansweredCount = 0;
-        let reviewHTML = '';
+        let incorrectHTML = '';
+        let unansweredHTML = '';
+        let correctHTML = '';
         let coveredTopics = new Set();
 
         activeQuestions.forEach((q, i) => {
@@ -782,7 +871,6 @@
             const isCorrect = userAnswer === q.answer;
             const isUnanswered = userAnswer === null;
 
-            // Track Chapter Progress
             if (!userProfile.chapterProgress[chapterKey]) {
                 userProfile.chapterProgress[chapterKey] = { attempted: 0, correct: 0 };
             }
@@ -792,7 +880,6 @@
                 score++;
                 userProfile.chapterProgress[chapterKey].correct++;
                 
-                // Track Unique Correct Answer Hash (Subject | Chapter | Exact Question Text)
                 const qId = `${q.subject}|${q.chapter}|${q.question}`;
                 if (!userProfile.correctlyAnswered.includes(qId)) {
                     userProfile.correctlyAnswered.push(qId);
@@ -804,7 +891,7 @@
             let statusClass = isCorrect ? 'correct' : (isUnanswered ? 'unanswered' : 'incorrect');
             let expHtml = q.explanation ? `<div class="explanation-box">${renderMarkdown(q.explanation)}</div>` : '';
 
-            reviewHTML += `
+            let itemHTML = `
                 <div class="result-item ${statusClass}">
                     <p style="color:#7f8c8d; font-size:0.85em; margin-bottom:5px; font-weight:bold;">[${q.subject} > ${q.chapter}]</p>
                     <div style="margin-bottom: 10px;"><strong>Q${i+1}:</strong> ${renderMarkdown(q.question, true)}</div>
@@ -814,13 +901,23 @@
                     ${!isCorrect ? `<p>Correct Answer: <span class="answer-correct">${renderMarkdown(q.options[q.answer], true)}</span></p>` : ''}
                     ${expHtml}
                 </div>`;
+                
+            if (isIncorrect = !isCorrect && !isUnanswered) {
+                incorrectHTML += itemHTML;
+            } else if (isUnanswered) {
+                unansweredHTML += itemHTML;
+            } else {
+                correctHTML += itemHTML;
+            }
         });
 
         document.getElementById('score-display').innerText = `Score: ${score} / ${activeQuestions.length}`;
         let m = Math.floor(elapsedSeconds / 60).toString().padStart(2, '0');
         let s = (elapsedSeconds % 60).toString().padStart(2, '0');
         document.getElementById('final-time-display').innerText = `Time Taken: ${m} mins ${s} secs`;
-        document.getElementById('review-container').innerHTML = reviewHTML;
+        
+        // Output with Incorrect on Top
+        document.getElementById('review-container').innerHTML = incorrectHTML + unansweredHTML + correctHTML;
         
         // Save to History
         const now = new Date();
@@ -835,7 +932,7 @@
             topics: Array.from(coveredTopics).join(', ')
         });
         saveProfileData();
-        updateQuestionCount(); // Refresh question pool limits in background for the next quiz 
+        updateQuestionCount(); 
         
         renderMath();
     }
